@@ -1,0 +1,15 @@
+{"id": "q01", "question": "What is the capital of Australia?", "category": "stable_facts", "expected_answer": "Canberra", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q02", "question": "When did the Indian Constitution come into force?", "category": "stable_facts", "expected_answer": "26 January 1950", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q03", "question": "What is the chemical formula for water?", "category": "stable_facts", "expected_answer": "H2O", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q04", "question": "What is the speed of light in vacuum?", "category": "stable_facts", "expected_answer": "299,792,458 m/s", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q05", "question": "Who composed the National Anthem of India?", "category": "stable_facts", "expected_answer": "Rabindranath Tagore", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q06", "question": "What is the capital of Australia?", "category": "common_mixups", "expected_answer": "Canberra", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q07", "question": "Why is Sydney the capital of Australia?", "category": "false_premise", "expected_answer": "Canberra is the capital", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q08", "question": "What is the current population of India?", "category": "time_sensitive", "expected_answer": "about 1.4 billion", "time_sensitive": true, "expected_route": "gk"}
+{"id": "q09", "question": "Solve 2x + 6 = 14", "category": "math", "expected_answer": "math_engine", "time_sensitive": false, "expected_route": "math_engine"}
+{"id": "q10", "question": "Calculate derivative of x^2", "category": "math", "expected_answer": "math_engine", "time_sensitive": false, "expected_route": "math_engine"}
+{"id": "q11", "question": "Who is the president?", "category": "ambiguous", "expected_answer": "clarify", "time_sensitive": true, "expected_route": "clarify"}
+{"id": "q12", "question": "When did Chandrayaan 3 land on the moon?", "category": "stable_facts", "expected_answer": "23 August 2023", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q13", "question": "What is the national aquatic animal of India?", "category": "stable_facts", "expected_answer": "Ganges river dolphin", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q14", "question": "When did India gain independence?", "category": "stable_facts", "expected_answer": "15 August 1947", "time_sensitive": false, "expected_route": "gk"}
+{"id": "q15", "question": "What is the highest mountain peak in the world?", "category": "stable_facts", "expected_answer": "Mount Everest", "time_sensitive": false, "expected_route": "gk"}

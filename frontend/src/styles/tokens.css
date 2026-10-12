@@ -1,0 +1,131 @@
+:root {
+  /* Core Color Palette (Dark Theme Default) */
+  --bg-base: #0B0F19;
+  --bg-surface: #111827;
+  --bg-surface-hover: #1A2234;
+  --bg-elevated: #1E293B;
+  --bg-glass: rgba(17, 24, 39, 0.85);
+  --bg-glass-card: rgba(22, 30, 46, 0.7);
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --border-strong: rgba(255, 255, 255, 0.28);
+  --border-focus: #38BDF8;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-inverse: #0F172A;
+
+  /* Accent & Status Colors */
+  --accent-primary: #38BDF8;
+  --accent-primary-hover: #0EA5E9;
+  --accent-primary-subtle: rgba(56, 189, 248, 0.12);
+  --accent-secondary: #818CF8;
+  
+  --status-success: #10B981;
+  --status-success-subtle: rgba(16, 185, 129, 0.15);
+  --status-warning: #F59E0B;
+  --status-warning-subtle: rgba(245, 158, 11, 0.15);
+  --status-error: #EF4444;
+  --status-error-subtle: rgba(239, 68, 68, 0.15);
+  --status-info: #38BDF8;
+
+  /* Spoken Word Highlighting */
+  --speech-highlight-bg: #FBBF24;
+  --speech-highlight-text: #000000;
+  --speech-sentence-bg: rgba(56, 189, 248, 0.2);
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Radii & Shadows */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(56, 189, 248, 0.25);
+
+  /* Focus Indicator Default */
+  --focus-ring: 2px solid var(--border-focus);
+  --focus-offset: 3px;
+
+  /* Sizing Base */
+  --nav-width: 270px;
+  --header-height: 64px;
+}
+
+/* High Contrast Override Mode (≥ 7:1 ratio) */
+[data-contrast="high"] {
+  --bg-base: #000000;
+  --bg-surface: #0A0A0A;
+  --bg-surface-hover: #171717;
+  --bg-elevated: #1F1F1F;
+  --bg-glass: #000000;
+  --bg-glass-card: #0A0A0A;
+
+  --border-subtle: #888888;
+  --border-medium: #CCCCCC;
+  --border-strong: #FFFF00;
+  --border-focus: #FFFF00;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #E5E7EB;
+  --text-muted: #D1D5DB;
+  --text-inverse: #000000;
+
+  --accent-primary: #FFFF00;
+  --accent-primary-hover: #FFFF66;
+  --accent-primary-subtle: rgba(255, 255, 0, 0.25);
+  --accent-secondary: #00FFFF;
+
+  --status-success: #00FF66;
+  --status-success-subtle: rgba(0, 255, 102, 0.25);
+  --status-warning: #FFFF00;
+  --status-warning-subtle: rgba(255, 255, 0, 0.25);
+  --status-error: #FF3366;
+  --status-error-subtle: rgba(255, 51, 102, 0.25);
+  --status-info: #00FFFF;
+
+  --speech-highlight-bg: #FFFF00;
+  --speech-highlight-text: #000000;
+  --speech-sentence-bg: rgba(255, 255, 255, 0.3);
+
+  --focus-ring: 3px solid #FFFF00;
+  --focus-offset: 4px;
+}
+
+/* Text Scaling Overrides */
+[data-text-scale="100"] {
+  font-size: 16px;
+}
+
+[data-text-scale="125"] {
+  font-size: 20px;
+}
+
+[data-text-scale="150"] {
+  font-size: 24px;
+}
+
+[data-text-scale="200"] {
+  font-size: 32px;
+}
+
+/* Reduced Motion Mode */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "date": "2026-10-11",
+  "provider": "fake",
+  "total_questions": 15,
+  "metrics": {
+    "math_routing_accuracy": "100.0%",
+    "false_premise_correction_rate": "100.0%",
+    "time_sensitive_caveat_rate": "100.0%",
+    "speakable_clean_rate": "100.0%"
+  },
+  "results": [
+    {
+      "id": "q01",
+      "question": "What is the capital of Australia?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "The capital of Australia is Canberra.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.65
+    },
+    {
+      "id": "q02",
+      "question": "When did the Indian Constitution come into force?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.14
+    },
+    {
+      "id": "q03",
+      "question": "What is the chemical formula for water?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.11
+    },
+    {
+      "id": "q04",
+      "question": "What is the speed of light in vacuum?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.1
+    },
+    {
+      "id": "q05",
+      "question": "Who composed the National Anthem of India?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.1
+    },
+    {
+      "id": "q06",
+      "question": "What is the capital of Australia?",
+      "category": "common_mixups",
+      "route": "gk",
+      "answer": "The capital of Australia is Canberra.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.08
+    },
+    {
+      "id": "q07",
+      "question": "Why is Sydney the capital of Australia?",
+      "category": "false_premise",
+      "route": "gk",
+      "answer": "Sydney is not the capital of Australia; Canberra is the capital city.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.09
+    },
+    {
+      "id": "q08",
+      "question": "What is the current population of India?",
+      "category": "time_sensitive",
+      "route": "gk",
+      "answer": "India has approximately 1.4 billion people and is the most populous country in the world.",
+      "confidence": "medium",
+      "time_sensitive": true,
+      "caveat": "Population figures change every year and vary by source, so check official census data.",
+      "latency_ms": 0.11
+    },
+    {
+      "id": "q09",
+      "question": "Solve 2x + 6 = 14",
+      "category": "math",
+      "route": "math_engine",
+      "answer": "This is a mathematical computation or equation. For exact, verified step-by-step working, please use the on-device Math Solver.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.0
+    },
+    {
+      "id": "q10",
+      "question": "Calculate derivative of x^2",
+      "category": "math",
+      "route": "math_engine",
+      "answer": "This is a mathematical computation or equation. For exact, verified step-by-step working, please use the on-device Math Solver.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.01
+    },
+    {
+      "id": "q11",
+      "question": "Who is the president?",
+      "category": "ambiguous",
+      "route": "clarify",
+      "answer": "Which country or organization are you asking about?",
+      "confidence": "medium",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.01
+    },
+    {
+      "id": "q12",
+      "question": "When did Chandrayaan 3 land on the moon?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.1
+    },
+    {
+      "id": "q13",
+      "question": "What is the national aquatic animal of India?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.09
+    },
+    {
+      "id": "q14",
+      "question": "When did India gain independence?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.09
+    },
+    {
+      "id": "q15",
+      "question": "What is the highest mountain peak in the world?",
+      "category": "stable_facts",
+      "route": "gk",
+      "answer": "This is a verified academic explanation.",
+      "confidence": "high",
+      "time_sensitive": false,
+      "caveat": "",
+      "latency_ms": 0.09
+    }
+  ]
+}

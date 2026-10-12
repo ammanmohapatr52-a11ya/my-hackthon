@@ -1,0 +1,223 @@
+[
+  {
+    "id": "polity-0001",
+    "category": "polity_civics",
+    "question_variants": [
+      "When did the Indian Constitution come into force?",
+      "Republic Day date",
+      "Constitution of India adoption vs enforcement",
+      "When was the Constitution adopted"
+    ],
+    "answer": "The Constitution of India came into force on 26 January 1950, which is celebrated as Republic Day.",
+    "details": "It was adopted by the Constituent Assembly earlier on 26 November 1949 (Constitution Day / Samvidhan Divas). Dr. B. R. Ambedkar served as the chairman of the Drafting Committee.",
+    "source": "Government of India National Portal · Legislative Department",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "geography-0001",
+    "category": "geography",
+    "question_variants": [
+      "What is the capital of Australia?",
+      "Is Sydney the capital of Australia?",
+      "Why is Sydney the capital of Australia?",
+      "Capital of Australia"
+    ],
+    "answer": "The capital of Australia is Canberra.",
+    "details": "Canberra is located in the Australian Capital Territory between Sydney and Melbourne. It was selected as a compromise between the two rival cities in 1908 and formally opened in 1927.",
+    "source": "Geoscience Australia · Australian Government",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "science-0001",
+    "category": "science",
+    "question_variants": [
+      "What is the chemical formula for water?",
+      "Formula of water",
+      "Chemical symbol of water"
+    ],
+    "answer": "The chemical formula for water is H2O.",
+    "details": "A single molecule of water consists of two hydrogen atoms covalently bonded to one oxygen atom.",
+    "source": "IUPAC Gold Book · Compendium of Chemical Terminology",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "science-0002",
+    "category": "science",
+    "question_variants": [
+      "What is the speed of light in vacuum?",
+      "Speed of light",
+      "c constant value"
+    ],
+    "answer": "The speed of light in vacuum is exactly 299,792,458 metres per second (about 300,000 kilometres per second).",
+    "details": "It is denoted by the universal physical constant 'c'. In scientific notation, it is approximately 3.00 × 10^8 m/s.",
+    "source": "NIST Reference on Constants, Units, and Uncertainty (CODATA)",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "space-0001",
+    "category": "science",
+    "question_variants": [
+      "When did Chandrayaan 3 land on the moon?",
+      "Chandrayaan 3 landing date",
+      "Chandrayaan-3 landing time",
+      "National Space Day India"
+    ],
+    "answer": "ISRO's Chandrayaan-3 lander Vikram touched down near the lunar south pole on 23 August 2023.",
+    "details": "India became the fourth country to achieve a soft landing on the Moon and the first near the lunar south pole. The landing site was named Shiv Shakti Point, and August 23 is observed as National Space Day.",
+    "source": "ISRO Official Press Release · Chandrayaan-3 Mission",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "symbols-0001",
+    "category": "polity_civics",
+    "question_variants": [
+      "What is the national aquatic animal of India?",
+      "National aquatic animal of India",
+      "Ganges river dolphin status"
+    ],
+    "answer": "The South Asian river dolphin (specifically the Ganges river dolphin, Platanista gangetica) is the National Aquatic Animal of India.",
+    "details": "It was declared the national aquatic animal in 2009 by the Ministry of Environment and Forests.",
+    "source": "Ministry of Environment, Forest and Climate Change, Govt of India",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "symbols-0002",
+    "category": "polity_civics",
+    "question_variants": [
+      "Who composed the National Anthem of India?",
+      "Who wrote Jana Gana Mana?",
+      "Composer of Indian National Anthem"
+    ],
+    "answer": "Rabindranath Tagore composed 'Jana Gana Mana', the National Anthem of India.",
+    "details": "It was officially adopted by the Constituent Assembly as the National Anthem on 24 January 1950. The formal playing time is approximately 52 seconds.",
+    "source": "Know India Portal · National Identity Elements · Govt of India",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "geography-0002",
+    "category": "geography",
+    "question_variants": [
+      "What is the highest mountain peak in the world?",
+      "Mount Everest height",
+      "Tallest mountain on Earth"
+    ],
+    "answer": "Mount Everest is the highest mountain peak above sea level, standing at 8,848.86 metres.",
+    "details": "It is located in the Mahalangur Himal sub-range of the Himalayas on the border of Nepal and China (Tibet).",
+    "source": "Survey of Nepal & Ministry of Natural Resources of China joint announcement (2020)",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "history-0001",
+    "category": "history",
+    "question_variants": [
+      "When did India gain independence?",
+      "Indian Independence Day date",
+      "15 August 1947"
+    ],
+    "answer": "India gained independence from British rule on 15 August 1947.",
+    "details": "The Indian Independence Act 1947 ended British rule. Jawaharlal Nehru became the first Prime Minister of independent India and delivered the 'Tryst with Destiny' address.",
+    "source": "National Archives of India · Ministry of Culture",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "demographics-0001",
+    "category": "economy",
+    "question_variants": [
+      "What is the population of India?",
+      "Current population of India",
+      "Most populous country in the world"
+    ],
+    "answer": "India has approximately 1.4 billion people and is the most populous country in the world according to UN estimates.",
+    "details": "UN DESA estimates indicated India surpassed China in population around April 2023. India's last official national census was conducted in 2011.",
+    "source": "United Nations Population Fund (UNFPA) State of World Population Report",
+    "verified_on": "2026-10-11",
+    "valid_until": "2027-01-01"
+  },
+  {
+    "id": "polity-0003",
+    "category": "polity_civics",
+    "question_variants": [
+      "Who is the current Prime Minister of India?",
+      "Who is the Prime Minister of India?",
+      "Who is the current PM of India?",
+      "Who is the PM of India?",
+      "Current Prime Minister of India",
+      "Current PM of India",
+      "Present Prime Minister of India",
+      "Incumbent Prime Minister of India",
+      "Prime Minister of India now",
+      "Bharat ke vartaman pradhan mantri kaun hai",
+      "Bharat ke pradhan mantri kaun hai",
+      "Who is PM of India"
+    ],
+    "answer": "Narendra Modi (Shri Narendra Damodardas Modi) is the current Prime Minister of India.",
+    "details": "Narendra Modi has been serving as the 14th Prime Minister of India since 26 May 2014, leading consecutive governments following the 2014, 2019, and 2024 general elections. He represents Varanasi in the Lok Sabha. (Historical Context: Jawaharlal Nehru was India's 1st Prime Minister from 1947 to 1964, not the current Prime Minister).",
+    "source": "Prime Minister's Office (PMO India), pmindia.gov.in · Election Commission of India",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "polity-0004",
+    "category": "polity_civics",
+    "question_variants": [
+      "Who was the first Prime Minister of India?",
+      "Who is the first Prime Minister of India?",
+      "First Prime Minister of India",
+      "First PM of India",
+      "Who was the first PM of India?",
+      "Who is the first PM of India?",
+      "Bharat ke pehle pradhan mantri kaun the",
+      "Bharat ke pratham pradhan mantri"
+    ],
+    "answer": "Jawaharlal Nehru (Pandit Jawaharlal Nehru) was the first Prime Minister of India.",
+    "details": "Jawaharlal Nehru served as India's first Prime Minister from Independence on 15 August 1947 until his demise on 27 May 1964. (Note: The current Prime Minister of India is Narendra Modi).",
+    "source": "National Portal of India (india.gov.in) · NCERT History",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "polity-0005",
+    "category": "polity_civics",
+    "question_variants": [
+      "Who is the current President of India?",
+      "Current President of India",
+      "Who is the President of India?",
+      "Present President of India",
+      "President of India now",
+      "Incumbent President of India",
+      "Bharat ke vartaman rashtrapati kaun hai"
+    ],
+    "answer": "Droupadi Murmu (Smt. Droupadi Murmu) is the current President of India.",
+    "details": "Droupadi Murmu assumed office on 25 July 2022 as the 15th President of India. She is the first tribal person and second woman to hold the highest constitutional office of India.",
+    "source": "Rashtrapati Bhavan (presidentofindia.gov.in) · National Portal of India",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  },
+  {
+    "id": "polity-0006",
+    "category": "polity_civics",
+    "question_variants": [
+      "Who was the first President of India?",
+      "Who is the first President of India?",
+      "First President of India",
+      "First President",
+      "Bharat ke pehle rashtrapati kaun the",
+      "Bharat ke pratham rashtrapati"
+    ],
+    "answer": "Dr. Rajendra Prasad was the first President of India.",
+    "details": "Dr. Rajendra Prasad served as President of India from 26 January 1950 to 13 May 1962. He remains the only Indian President to serve two full terms in office. (Note: The current President of India is Droupadi Murmu).",
+    "source": "Rashtrapati Bhavan Historical Archive · NCERT Civics",
+    "verified_on": "2026-10-11",
+    "valid_until": null
+  }
+]
+
