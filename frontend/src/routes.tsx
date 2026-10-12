@@ -17,6 +17,7 @@ import { NewsPage } from './pages/NewsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminFirewallGuard } from './security/AdminFirewallGuard';
+import { UserAuthGuard } from './security/UserAuthGuard';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -46,8 +47,15 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Main Public Application Shell */}
-      <Route path="/" element={<AppShell />}>
+      {/* Protected Academic Application Shell (Enforces Authentication) */}
+      <Route
+        path="/"
+        element={
+          <UserAuthGuard>
+            <AppShell />
+          </UserAuthGuard>
+        }
+      >
         <Route index element={<HomePage />} />
         <Route path="solve" element={<SolveMathPage />} />
         <Route path="ask" element={<AskPage />} />

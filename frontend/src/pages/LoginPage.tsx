@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Mail,
   Lock,
@@ -20,8 +20,14 @@ import {
   X,
   Radio,
   CheckCircle,
+  LogOut,
 } from 'lucide-react';
-import { authenticateOrRegisterUser } from '../services/userService';
+import {
+  authenticateOrRegisterUser,
+  getCurrentAuthUser,
+  logoutAuthUser,
+  type AuthSessionUser,
+} from '../services/userService';
 import {
   sendRegistrationOtp,
   sendLoginOtp,
@@ -39,6 +45,8 @@ import { MarvelAvatar } from '../components/ui/MarvelAvatar';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [activeUser, setActiveUser] = useState<AuthSessionUser | null>(() => getCurrentAuthUser());
   const [isSignUp, setIsSignUp] = useState(false);
   const [step, setStep] = useState<'auth' | 'otp'>('auth');
   const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
@@ -263,8 +271,9 @@ export const LoginPage: React.FC = () => {
       sessionStorage.setItem('just_logged_in_name', authResult.user?.name || username);
 
       setTimeout(() => {
-        navigate('/');
-      }, 750);
+        const dest = (location.state as any)?.from || '/';
+        navigate(dest, { replace: true });
+      }, 500);
     }, 550);
   };
 
@@ -297,8 +306,9 @@ export const LoginPage: React.FC = () => {
       sessionStorage.setItem('just_logged_in_name', verifyRes.user?.name || verifyRes.user?.username || 'User');
 
       setTimeout(() => {
-        navigate('/');
-      }, 900);
+        const dest = (location.state as any)?.from || '/';
+        navigate(dest, { replace: true });
+      }, 500);
     }, 600);
   };
 
@@ -373,6 +383,46 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handleInstantDemoLogin = () => {
+    setIsLoading(true);
+    setError(null);
+    const authResult = authenticateOrRegisterUser({
+      usernameOrEmail: 'alex_student',
+      password: 'demopass123',
+      isSignUp: false,
+    });
+    setIsLoading(false);
+    if (!authResult.success) {
+      setError(authResult.error || 'Failed to authenticate demo student');
+      return;
+    }
+    setSuccessMsg(`Welcome, ${authResult.user?.name || 'Alex Rivera'}! Entering Neurobridge...`);
+    setTimeout(() => {
+      const dest = (location.state as any)?.from || '/';
+      navigate(dest, { replace: true });
+    }, 400);
+  };
+
+  const handleGuestLogin = () => {
+    setIsLoading(true);
+    setError(null);
+    const guestUser = `learner_${Math.floor(100 + Math.random() * 900)}`;
+    const authResult = authenticateOrRegisterUser({
+      usernameOrEmail: guestUser,
+      provider: 'Guest Pass',
+    });
+    setIsLoading(false);
+    if (!authResult.success) {
+      setError(authResult.error || 'Failed to enter as guest');
+      return;
+    }
+    setSuccessMsg(`Welcome, Guest Learner! Entering Neurobridge...`);
+    setTimeout(() => {
+      const dest = (location.state as any)?.from || '/';
+      navigate(dest, { replace: true });
+    }, 400);
+  };
+
   const handleDemoLogin = () => {
     setUsername('alex_student');
     setPassword('demopass123');
@@ -399,8 +449,9 @@ export const LoginPage: React.FC = () => {
       sessionStorage.setItem('just_logged_in_name', authResult.user?.name || `${provider} User`);
       setSuccessMsg(`Signed in with ${provider}! Synced with User Directory.`);
       setTimeout(() => {
-        navigate('/');
-      }, 700);
+        const dest = (location.state as any)?.from || '/';
+        navigate(dest, { replace: true });
+      }, 500);
     }, 500);
   };
 
@@ -1155,6 +1206,152 @@ export const LoginPage: React.FC = () => {
                 gap: '0.75rem',
               }}
             >
+              {/* Active User Session Notice */}
+              {activeUser && (
+                <div
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    border: '1px solid rgba(56, 189, 248, 0.4)',
+                    borderRadius: '14px',
+                    padding: '12px 14px',
+                    marginBottom: '0.5rem',
+                    textAlign: 'center',
+                    boxShadow: '0 0 16px rgba(56, 189, 248, 0.15)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
+                    <Shield size={14} />
+                    <span>Active Authenticated Session</span>
+                  </div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff', marginTop: '4px' }}>
+                    {activeUser.name || activeUser.username}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                    @{activeUser.username} · Role: {activeUser.role}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                    <button
+                      type="button"
+                      id="login-continue-app-btn"
+                      onClick={() => navigate((location.state as any)?.from || '/', { replace: true })}
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
+                        color: '#ffffff',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
+                      }}
+                    >
+                      Enter App →
+                    </button>
+                    <button
+                      type="button"
+                      id="login-signout-btn"
+                      onClick={() => {
+                        logoutAuthUser();
+                        setActiveUser(null);
+                      }}
+                      style={{
+                        padding: '7px 12px',
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        color: '#f87171',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        fontWeight: 600,
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <LogOut size={13} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Instant 1-Click Access Options */}
+              {!isSignUp && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '0.4rem' }}>
+                  <button
+                    type="button"
+                    id="login-instant-demo-btn"
+                    onClick={handleInstantDemoLogin}
+                    disabled={isLoading}
+                    style={{
+                      width: '100%',
+                      padding: '9px 14px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(56, 189, 248, 0.18) 100%)',
+                      border: '1px solid rgba(56, 189, 248, 0.5)',
+                      color: '#38bdf8',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: isLoading ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 0 16px rgba(56, 189, 248, 0.2)',
+                      transition: 'all 0.18s ease',
+                    }}
+                  >
+                    <Sparkles size={15} color="#38bdf8" />
+                    <span>⚡ Instant Student Access (1-Click Demo)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="login-guest-btn"
+                    onClick={handleGuestLogin}
+                    disabled={isLoading}
+                    style={{
+                      width: '100%',
+                      padding: '7px 12px',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#cbd5e1',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: isLoading ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.18s ease',
+                    }}
+                  >
+                    <User size={13} />
+                    <span>Continue as Guest Learner</span>
+                  </button>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      margin: '4px 0',
+                      color: '#64748b',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+                    <span style={{ padding: '0 8px' }}>OR LOGIN WITH ACCOUNT</span>
+                    <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+                  </div>
+                </div>
+              )}
+
               {/* Login Method Selector (Password vs Direct Gmail OTP) */}
               {!isSignUp && (
                 <div

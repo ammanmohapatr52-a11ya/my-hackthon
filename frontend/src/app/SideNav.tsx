@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home,
   Calculator,
@@ -12,6 +12,7 @@ import {
   Grid,
   FileText,
   LogIn,
+  LogOut,
   Shield,
   Globe2,
   X,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { useLanguage } from '../i18n/LanguageContext';
+import { getCurrentAuthUser, logoutAuthUser, type AuthSessionUser } from '../services/userService';
 
 interface SideNavProps {
   onItemClick?: () => void;
@@ -26,7 +28,15 @@ interface SideNavProps {
 }
 
 export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
+  const navigate = useNavigate();
   const { t } = useLanguage();
+  const [currentUser, setCurrentUser] = useState<AuthSessionUser | null>(() => getCurrentAuthUser());
+
+  useEffect(() => {
+    const syncUser = () => setCurrentUser(getCurrentAuthUser());
+    window.addEventListener('neurobridge_auth_changed', syncUser);
+    return () => window.removeEventListener('neurobridge_auth_changed', syncUser);
+  }, []);
 
   const navItems = [
     { to: '/', label: t('nav.home', 'Home'), icon: Home },
@@ -40,7 +50,9 @@ export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
     { to: '/history', label: t('nav.history', 'My History'), icon: Clock },
     { to: '/profile', label: t('nav.profile', 'My Profile'), icon: User },
     { to: '/settings', label: t('nav.settings', 'Accessibility Settings'), icon: Settings },
-    { to: '/login', label: t('nav.login', 'Login / Account'), icon: LogIn },
+    ...(currentUser
+      ? [{ to: '/login', label: `Switch / Sign Out (@${currentUser.username})`, icon: LogOut }]
+      : [{ to: '/login', label: t('nav.login', 'Login / Account'), icon: LogIn }]),
   ];
 
   return (
@@ -191,6 +203,39 @@ export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
             {t('nav.later', 'Later')}
           </span>
         </div>
+
+        {currentUser && (
+          <button
+            type="button"
+            id="sidenav-signout-btn"
+            onClick={() => {
+              logoutAuthUser();
+              if (onClose) onClose();
+              if (onItemClick) onItemClick();
+              navigate('/login');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              color: '#f87171',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              marginTop: '0.5rem',
+              width: '100%',
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <LogOut size={20} color="#f87171" />
+            <span>Sign Out (@{currentUser.username})</span>
+          </button>
+        )}
       </div>
 
       <div

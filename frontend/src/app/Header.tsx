@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PrivacyBadge } from './PrivacyBadge';
 import { LanguageSelect } from './LanguageSelect';
 import { VoiceCommandModal } from '../features/voice-command/VoiceCommandModal';
-import { Mic, Menu, LogIn, User as UserIcon } from 'lucide-react';
+import { Mic, Menu, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { useAccessibility } from '../accessibility/AccessibilityContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
+import { logoutAuthUser } from '../services/userService';
 
 interface HeaderProps {
   onToggleMobileNav?: () => void;
@@ -14,6 +15,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = false }) => {
+  const navigate = useNavigate();
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
   const { profile } = useAccessibility();
@@ -138,41 +140,88 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = f
             <span className="hide-on-mobile">{t('header.voice_cmd', 'Voice command')}</span>
           </button>
 
-          <Link
-            to={currentUser ? "/profile" : "/login"}
-            className="btn btn-sm"
-            id="header-login-btn"
-            title={currentUser ? `My Profile (@${currentUser.username})` : 'Log In'}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: currentUser ? 'rgba(56, 189, 248, 0.15)' : 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
-              color: currentUser ? '#38bdf8' : '#ffffff',
-              border: currentUser ? '1px solid rgba(56, 189, 248, 0.45)' : 'none',
-              borderRadius: '9999px',
-              padding: '6px 14px',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              textDecoration: 'none',
-              boxShadow: currentUser ? '0 0 10px rgba(56, 189, 248, 0.2)' : '0 0 14px rgba(245, 158, 11, 0.45)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {currentUser ? (
-              <>
+          {currentUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Link
+                to="/profile"
+                className="btn btn-sm"
+                id="header-profile-btn"
+                title={`My Profile (@${currentUser.username})`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.45)',
+                  borderRadius: '9999px',
+                  padding: '6px 12px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  textDecoration: 'none',
+                  boxShadow: '0 0 10px rgba(56, 189, 248, 0.2)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
                 <MarvelAvatar hero="ironman" size="xs" />
-                <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {currentUser.username}
                 </span>
-              </>
-            ) : (
-              <>
-                <LogIn size={15} />
-                <span>Log In</span>
-              </>
-            )}
-          </Link>
+              </Link>
+
+              <button
+                type="button"
+                id="header-signout-btn"
+                onClick={() => {
+                  logoutAuthUser();
+                  navigate('/login');
+                }}
+                title="Sign Out / Lock Workspace"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  color: '#f87171',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  borderRadius: '9999px',
+                  padding: '6px 11px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <LogOut size={13} />
+                <span className="hide-on-mobile">Sign Out</span>
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="btn btn-sm"
+              id="header-login-btn"
+              title="Log In to Workspace"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '6px 14px',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                textDecoration: 'none',
+                boxShadow: '0 0 14px rgba(245, 158, 11, 0.45)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <LogIn size={15} />
+              <span>Log In</span>
+            </Link>
+          )}
         </div>
       </header>
 
