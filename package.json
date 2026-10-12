@@ -4,14 +4,14 @@
   "description": "Accessible Academic Problem Solver · Team Neurobridge · NEXTECH 2.0",
   "scripts": {
     "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
-    "preview": "npm --prefix frontend run preview"
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "start": "npx --yes serve frontend/dist -s -l $PORT"
   },
   "keywords": [
     "accessibility",
     "education",
     "math-solver",
-    "ollama",
     "speech-recognition",
     "wcag"
   ],
