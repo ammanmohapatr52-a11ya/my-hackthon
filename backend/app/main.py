@@ -66,13 +66,21 @@ if dist_dir:
     if images_dir.exists():
         app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
 
+    @app.get("/")
+    async def serve_spa_root():
+        return FileResponse(str(dist_dir / "index.html"))
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        if full_path.startswith("api/"):
+        if full_path.startswith("api/") or full_path.startswith("api"):
             return {"error": "API route not found"}
         target = dist_dir / full_path
         if target.exists() and target.is_file():
             return FileResponse(str(target))
+        # If target has directory with index.html
+        if target.exists() and target.is_dir() and (target / "index.html").exists():
+            return FileResponse(str(target / "index.html"))
+        # SPA fallback to root index.html
         return FileResponse(str(dist_dir / "index.html"))
 else:
     @app.get("/")
