@@ -53,13 +53,13 @@ export const getBackendBaseUrl = (): string => {
     // ignore storage access errors
   }
 
-  // 4. If running on Render (unified deployment serving both frontend and backend)
-  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+  // 4. If running directly on the backend web service domain
+  if (typeof window !== 'undefined' && window.location.hostname === 'my-hackthon-api.onrender.com') {
     return ''; // Same-origin relative URLs (/api/v1/...)
   }
 
-  // 5. Production on Vercel / external host default backend:
-  return 'https://my-hackthon.onrender.com';
+  // 5. Production backend on Render (used by static site my-hackthon.onrender.com & Vercel):
+  return 'https://my-hackthon-api.onrender.com';
 };
 
 export const setBackendBaseUrl = (url: string): void => {
