@@ -86,3 +86,50 @@ def test_firewall_status_and_ip_quarantine_controls():
     )
     assert unblock_resp.status_code == 200
     assert "198.51.100.99" not in firewall_state.blocked_ips
+
+def test_demo_otp_one_minute_validity_and_single_use():
+    demo_email_1 = "demouser1@gmail.com"
+    demo_email_2 = "demouser2@gmail.com"
+
+    # 1. Send Demo OTP for email 1 (validity 60 seconds)
+    resp = client.post("/api/v1/auth/send-otp", json={
+        "email": demo_email_1,
+        "mode": "demo"
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "success"
+    assert data["expires_in_seconds"] == 60
+    assert data["is_demo"] is True
+    otp1 = data["otp_preview"]
+
+    # 2. Verify Demo OTP for email 1
+    v_resp = client.post("/api/v1/auth/verify-otp", json={
+        "email": demo_email_1,
+        "otp": otp1
+    })
+    assert v_resp.status_code == 200
+    assert v_resp.json()["valid"] is True
+    assert v_resp.json()["is_demo"] is True
+
+    # 3. Same email 1 can NEVER be used for demo again
+    repeat_resp = client.post("/api/v1/auth/send-otp", json={
+        "email": demo_email_1,
+        "mode": "demo"
+    })
+    assert repeat_resp.status_code == 200
+    rep_data = repeat_resp.json()
+    assert rep_data["status"] == "error"
+    assert rep_data.get("already_used") is True
+    assert "already used its one-time demo access" in rep_data["message"]
+
+    # 4. Another email 2 works successfully
+    resp2 = client.post("/api/v1/auth/send-otp", json={
+        "email": demo_email_2,
+        "mode": "demo"
+    })
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert data2["status"] == "success"
+    assert data2["expires_in_seconds"] == 60
+    assert data2["is_demo"] is True

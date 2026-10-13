@@ -211,7 +211,7 @@ class EmailService:
 </body>
 </html>"""
 
-    def send_otp_email(self, to_email: str, username: str, otp: str) -> Dict[str, Any]:
+    def send_otp_email(self, to_email: str, username: str, otp: str, expires_minutes: int = 10, is_demo: bool = False) -> Dict[str, Any]:
         """
         Sends OTP email via SMTP (e.g. Gmail).
         Returns status dictionary indicating whether it was sent via live SMTP or needs setup.
@@ -249,17 +249,30 @@ class EmailService:
                 }
 
         # Build MIME Message
-        subject = f"Security Verification: {otp} (ATLAS 2.0 Login Code)"
-        html_content = self.generate_otp_html(username, otp, expires_minutes=10, to_email=clean_to)
-        text_content = (
-            f"Hello,\n\n"
-            f"A secure login request was initiated for your ATLAS 2.0 account associated with {clean_to}.\n\n"
-            f"ONE-TIME VERIFICATION CODE:\n"
-            f"{otp}\n\n"
-            f"This code expires in 10 minutes.\n"
-            f"Enter this 6-digit code on the login screen to verify your identity.\n\n"
-            f"Security Notice: Never share this code with anyone.\n"
-        )
+        if is_demo or expires_minutes <= 1:
+            subject = f"One-Time Demo Access Code: {otp} (Valid for 1 Minute)"
+            html_content = self.generate_otp_html(username, otp, expires_minutes=1, to_email=clean_to)
+            text_content = (
+                f"Hello Demo Student,\n\n"
+                f"A one-time demo access request was initiated for your Neurobridge workspace associated with {clean_to}.\n\n"
+                f"ONE-TIME DEMO PASSCODE (NO PASSWORD REQUIRED):\n"
+                f"{otp}\n\n"
+                f"CRITICAL: This code is strictly valid for 1 MINUTE (60 SECONDS).\n"
+                f"Each Gmail address can only be used for the demo once.\n\n"
+                f"Enter this 6-digit code on the demo screen to start your session.\n"
+            )
+        else:
+            subject = f"Security Verification: {otp} (Neurobridge Login Code)"
+            html_content = self.generate_otp_html(username, otp, expires_minutes=expires_minutes, to_email=clean_to)
+            text_content = (
+                f"Hello,\n\n"
+                f"A secure login request was initiated for your Neurobridge account associated with {clean_to}.\n\n"
+                f"ONE-TIME VERIFICATION CODE:\n"
+                f"{otp}\n\n"
+                f"This code expires in {expires_minutes} minutes.\n"
+                f"Enter this 6-digit code on the login screen to verify your identity.\n\n"
+                f"Security Notice: Never share this code with anyone.\n"
+            )
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject

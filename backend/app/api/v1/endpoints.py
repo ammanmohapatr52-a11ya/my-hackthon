@@ -144,6 +144,7 @@ from backend.app.core.firewall import firewall_state
 from backend.app.services.email.email_service import email_service
 
 _pending_otps: dict = {}
+_used_demo_emails: set = set()
 
 # Master Admin Credentials configuration on backend
 MASTER_ADMIN_CONFIG = {
@@ -201,48 +202,73 @@ async def send_otp(req: Request):
         email = body.get("email", "").strip().lower()
         username = body.get("username", "").strip()
         otp = str(body.get("otp", "")).strip()
+        mode = str(body.get("mode", "registration")).strip().lower()
+        is_demo = mode == "demo"
         
         if not email or "@" not in email:
             raise HTTPException(status_code=400, detail="A valid email address is required")
+
+        # Demo mode: single-use per Gmail enforcement
+        if is_demo and email in _used_demo_emails:
+            return {
+                "status": "error",
+                "message": f"This Gmail address ({email}) has already used its one-time demo access. The demo can only be used once per Gmail. Please use another Gmail address.",
+                "already_used": True
+            }
+
         if not otp:
             # Generate 6-digit OTP if not provided
             import random
             otp = f"{random.randint(100000, 999999)}"
         
         import time
+        # Demo OTP is strictly valid for 1 minute (60 seconds); standard is 300 seconds
+        expires_seconds = 60 if is_demo else int(body.get("expires_in_seconds", 300))
+
         _pending_otps[email] = {
             "otp": otp,
             "username": username or email.split("@")[0],
             "created_at": time.time(),
-            "expires_at": time.time() + 300, # 5 minutes
+            "expires_at": time.time() + expires_seconds,
+            "expires_in_seconds": expires_seconds,
+            "mode": mode,
+            "is_demo": is_demo,
             "attempts": 0
         }
         
         # Real transmission via Gmail SMTP
-        smtp_result = email_service.send_otp_email(email, username or email.split("@")[0], otp)
+        smtp_result = email_service.send_otp_email(
+            email,
+            username or email.split("@")[0],
+            otp,
+            expires_minutes=1 if is_demo else 10,
+            is_demo=is_demo
+        )
         
         if smtp_result.get("success"):
             return {
                 "status": "success",
-                "message": f"Verification code sent directly to your Gmail: {email}",
+                "message": f"{'Demo 1-minute verification code' if is_demo else 'Verification code'} sent directly to your Gmail: {email}",
                 "email": email,
                 "dispatched": True,
                 "is_live_delivery": True,
                 "channel": "live_gmail_smtp",
                 "otp_preview": otp,
-                "expires_in_seconds": 300,
+                "is_demo": is_demo,
+                "expires_in_seconds": expires_seconds,
             }
         else:
             return {
                 "status": "success",
-                "message": f"Email could not be delivered to {email}: Google SMTP requires a 16-character App Password.",
+                "message": f"Passcode generated for {email}. (Live Gmail delivery requires App Password in SMTP settings).",
                 "email": email,
                 "otp_preview": otp,
                 "dispatched": False,
                 "is_live_delivery": False,
                 "channel": "simulated_fallback",
                 "smtp_status": smtp_result,
-                "expires_in_seconds": 300,
+                "is_demo": is_demo,
+                "expires_in_seconds": expires_seconds,
             }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -261,7 +287,8 @@ async def verify_otp(req: Request):
         import time
         if time.time() > record["expires_at"]:
             del _pending_otps[email]
-            return {"status": "error", "valid": False, "message": "Verification code expired. Please request a new OTP."}
+            time_limit = "1 minute" if record.get("is_demo") else "5 minutes"
+            return {"status": "error", "valid": False, "message": f"Verification code expired (valid for {time_limit} only). Please request a new OTP."}
 
         record["attempts"] += 1
         if record["attempts"] > 5:
@@ -270,12 +297,17 @@ async def verify_otp(req: Request):
 
         if record["otp"] == otp:
             username = record["username"]
+            is_demo = record.get("is_demo", False)
+            if is_demo:
+                # Permanently blacklist this Gmail from ever claiming the demo again
+                _used_demo_emails.add(email)
             del _pending_otps[email]
             return {
                 "status": "success",
                 "valid": True,
                 "message": f"Email {email} verified successfully!",
-                "username": username
+                "username": username,
+                "is_demo": is_demo
             }
         
         return {

@@ -14,7 +14,8 @@ export interface PendingRegistration {
   expiresAt: number;
   sentAt: number;
   attempts: number;
-  mode?: 'registration' | 'login';
+  mode?: 'registration' | 'login' | 'demo';
+  validitySeconds?: number;
 }
 
 export interface DispatchedOtpNotification {
@@ -49,9 +50,44 @@ export interface SmtpConfigStatus {
 
 const STORAGE_PENDING_REGISTRATION_KEY = 'neurobridge_pending_registration';
 const STORAGE_DISPATCHED_NOTIFICATIONS_KEY = 'neurobridge_dispatched_otps';
+const STORAGE_USED_DEMO_EMAILS_KEY = 'neurobridge_used_demo_emails';
 
-const OTP_VALIDITY_SECONDS = 300; // 5 minutes
+const OTP_VALIDITY_SECONDS = 300; // 5 minutes standard
+export const OTP_DEMO_VALIDITY_SECONDS = 60; // 1 minute for demo access
 const RESEND_COOLDOWN_SECONDS = 60; // 60 seconds
+
+/**
+ * Returns the list of all Gmail/email addresses that have already consumed their 1-time demo access.
+ */
+export const getUsedDemoEmails = (): string[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_USED_DEMO_EMAILS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Checks if a particular Gmail address has already been used for demo access.
+ */
+export const isDemoEmailAlreadyUsed = (email: string): boolean => {
+  const clean = email.trim().toLowerCase();
+  if (!clean) return false;
+  return getUsedDemoEmails().includes(clean);
+};
+
+/**
+ * Permanently records a Gmail address as having consumed its one-time demo access.
+ */
+export const recordUsedDemoEmail = (email: string): void => {
+  const clean = email.trim().toLowerCase();
+  if (!clean) return;
+  const existing = getUsedDemoEmails();
+  if (!existing.includes(clean)) {
+    localStorage.setItem(STORAGE_USED_DEMO_EMAILS_KEY, JSON.stringify([...existing, clean]));
+  }
+};
 
 /**
  * Generates a secure random 6-digit OTP
@@ -360,6 +396,195 @@ export const verifyLoginOtpAndAuthenticate = (
   }
 
   clearPendingRegistration();
+  return { success: true, user: authResult.user };
+};
+
+/**
+ * Dispatches an email OTP for Demo Access without requiring any password.
+ * Strictly enforces 60-second (1-minute) expiration and single-use per Gmail address.
+ */
+export const sendDemoOtp = async (params: {
+  email: string;
+}): Promise<SendOtpResult> => {
+  const { email } = params;
+  const cleanEmail = email.trim().toLowerCase();
+
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { success: false, error: 'Please enter a valid Gmail / Email address for demo access' };
+  }
+
+  // Enforce single-use per Gmail rule for demo access
+  if (isDemoEmailAlreadyUsed(cleanEmail)) {
+    return {
+      success: false,
+      error: `This Gmail address (${cleanEmail}) has already claimed its one-time demo access. The demo mode is strictly limited to one session per Gmail. Please use a different Gmail address to try the demo.`,
+    };
+  }
+
+  const otp = generateRandomOtp();
+  const now = Date.now();
+  const cleanUsername = cleanEmail.split('@')[0];
+
+  // Strictly 60 seconds (1 minute) validity for demo OTP
+  const pendingData: PendingRegistration = {
+    email: cleanEmail,
+    username: cleanUsername,
+    otp,
+    sentAt: now,
+    expiresAt: now + OTP_DEMO_VALIDITY_SECONDS * 1000,
+    attempts: 0,
+    mode: 'demo',
+    validitySeconds: OTP_DEMO_VALIDITY_SECONDS,
+  };
+
+  localStorage.setItem(STORAGE_PENDING_REGISTRATION_KEY, JSON.stringify(pendingData));
+
+  let channel: 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
+  let isLiveDelivery = false;
+  let backendMessage = '';
+  let smtpStatusInfo: any = null;
+
+  try {
+    const res = await fetch('http://127.0.0.1:8000/api/v1/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: cleanEmail,
+        username: `Demo Student (${cleanUsername})`,
+        otp,
+        mode: 'demo',
+        expires_in_seconds: 60,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'error' && data.already_used) {
+        return { success: false, error: data.message };
+      }
+      if (data.channel === 'live_gmail_smtp') {
+        channel = 'live_gmail_smtp';
+        isLiveDelivery = true;
+        backendMessage = data.message;
+      } else {
+        smtpStatusInfo = data.smtp_status;
+        backendMessage = data.message;
+      }
+    }
+  } catch {
+    backendMessage = 'Backend server offline at http://127.0.0.1:8000 (demo code available via preview notification)';
+  }
+
+  const notification: DispatchedOtpNotification = {
+    id: `notif-demo-${Date.now()}`,
+    email: cleanEmail,
+    otp,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    subject: `One-Time Demo Code: ${otp} (Valid for 1 Minute Only)`,
+    isLiveDelivery,
+  };
+
+  try {
+    const rawNotifs = localStorage.getItem(STORAGE_DISPATCHED_NOTIFICATIONS_KEY);
+    const notifs: DispatchedOtpNotification[] = rawNotifs ? JSON.parse(rawNotifs) : [];
+    localStorage.setItem(STORAGE_DISPATCHED_NOTIFICATIONS_KEY, JSON.stringify([notification, ...notifs.slice(0, 19)]));
+  } catch {
+    // fallback
+  }
+
+  window.dispatchEvent(
+    new CustomEvent('neurobridge_otp_dispatched', {
+      detail: notification,
+    })
+  );
+
+  return {
+    success: true,
+    otpPreview: otp,
+    channel,
+    isLiveDelivery,
+    message: backendMessage,
+    smtpStatus: smtpStatusInfo,
+  };
+};
+
+/**
+ * Validates the entered Demo OTP, enforces the 1-minute expiration window,
+ * permanently blacklists this Gmail from ever claiming the demo again,
+ * and completes demo session authentication without requiring any password.
+ */
+export const verifyDemoOtpAndAuthenticate = (
+  email: string,
+  enteredOtp: string
+): { success: boolean; error?: string; user?: UserRecord } => {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanOtp = enteredOtp.trim().replace(/\s/g, '');
+
+  // Pre-check single-use rule
+  if (isDemoEmailAlreadyUsed(cleanEmail)) {
+    return {
+      success: false,
+      error: `This Gmail address (${cleanEmail}) has already consumed its one-time demo access. Please use another Gmail address to test the demo.`,
+    };
+  }
+
+  const pending = getPendingRegistration();
+  if (!pending || pending.email.toLowerCase() !== cleanEmail) {
+    return {
+      success: false,
+      error: 'No active Demo verification session found for this email. Please request a new code.',
+    };
+  }
+
+  // Strict 1-minute expiration check (60 seconds)
+  if (Date.now() > pending.expiresAt) {
+    clearPendingRegistration();
+    return {
+      success: false,
+      error: 'Demo passcode has expired! The 1-minute validity window has elapsed. Please request a fresh code or try another Gmail address.',
+    };
+  }
+
+  if (pending.attempts >= 5) {
+    clearPendingRegistration();
+    return {
+      success: false,
+      error: 'Exceeded maximum attempts. Demo session locked. Please request a new code with another Gmail.',
+    };
+  }
+
+  if (cleanOtp !== pending.otp) {
+    pending.attempts += 1;
+    localStorage.setItem(STORAGE_PENDING_REGISTRATION_KEY, JSON.stringify(pending));
+    const remainingAttempts = 5 - pending.attempts;
+    return {
+      success: false,
+      error: `Invalid OTP code. Please check and try again (${remainingAttempts} attempts remaining).`,
+    };
+  }
+
+  // OTP verified! Permanently blacklist this Gmail from claiming the demo again
+  recordUsedDemoEmail(cleanEmail);
+  clearPendingRegistration();
+
+  // Authenticate / register user into demo session without password
+  const authResult = authenticateOrRegisterUser({
+    usernameOrEmail: cleanEmail,
+    isSignUp: false,
+    provider: 'Demo Gmail OTP (1-Min Pass)',
+  });
+
+  if (!authResult.success) {
+    const newReg = authenticateOrRegisterUser({
+      usernameOrEmail: cleanEmail,
+      isSignUp: true,
+      provider: 'Demo Gmail OTP (1-Min Pass)',
+    });
+    if (!newReg.success) {
+      return { success: false, error: newReg.error || 'Failed to authenticate demo student session' };
+    }
+    return { success: true, user: newReg.user };
+  }
+
   return { success: true, user: authResult.user };
 };
 

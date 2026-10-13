@@ -21,6 +21,7 @@ import {
   Radio,
   CheckCircle,
   LogOut,
+  Clock,
 } from 'lucide-react';
 import {
   authenticateOrRegisterUser,
@@ -33,6 +34,10 @@ import {
   sendLoginOtp,
   verifyLoginOtpAndAuthenticate,
   verifyOtpAndRegister,
+  sendDemoOtp,
+  verifyDemoOtpAndAuthenticate,
+  isDemoEmailAlreadyUsed,
+  OTP_DEMO_VALIDITY_SECONDS,
   getPendingRegistration,
   getSmtpStatus,
   saveSmtpConfig,
@@ -93,6 +98,17 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Demo Access Modal State (Gmail + 1-Minute OTP, strictly single-use per Gmail)
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
+  const [demoEmail, setDemoEmail] = useState('');
+  const [demoOtp, setDemoOtp] = useState('');
+  const [demoStep, setDemoStep] = useState<'email' | 'otp'>('email');
+  const [demoTimer, setDemoTimer] = useState(OTP_DEMO_VALIDITY_SECONDS);
+  const [demoError, setDemoError] = useState<string | null>(null);
+  const [demoSuccess, setDemoSuccess] = useState<string | null>(null);
+  const [isDemoSubmitting, setIsDemoSubmitting] = useState(false);
+  const [demoOtpPreview, setDemoOtpPreview] = useState<string | null>(null);
+
   // Load live SMTP status on mount
   useEffect(() => {
     getSmtpStatus().then((status) => {
@@ -103,7 +119,22 @@ export const LoginPage: React.FC = () => {
     });
   }, []);
 
+  // Demo 60-second OTP countdown timer
+  useEffect(() => {
+    if (!demoModalOpen || demoStep !== 'otp') return;
 
+    const interval = setInterval(() => {
+      setDemoTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [demoModalOpen, demoStep]);
 
   // Countdown timer for OTP expiry and resend cooldown
   useEffect(() => {
@@ -383,53 +414,93 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleInstantDemoLogin = () => {
-    setIsLoading(true);
-    setError(null);
-    const authResult = authenticateOrRegisterUser({
-      usernameOrEmail: 'alex_student',
-      password: 'demopass123',
-      isSignUp: false,
-    });
-    setIsLoading(false);
-    if (!authResult.success) {
-      setError(authResult.error || 'Failed to authenticate demo student');
-      return;
-    }
-    setSuccessMsg(`Welcome, ${authResult.user?.name || 'Alex Rivera'}! Entering Neurobridge...`);
-    setTimeout(() => {
-      const dest = (location.state as any)?.from || '/';
-      navigate(dest, { replace: true });
-    }, 400);
+  const handleOpenDemoModal = () => {
+    setDemoModalOpen(true);
+    setDemoStep('email');
+    setDemoEmail('');
+    setDemoOtp('');
+    setDemoError(null);
+    setDemoSuccess(null);
+    setDemoTimer(OTP_DEMO_VALIDITY_SECONDS);
+    setDemoOtpPreview(null);
   };
 
-  const handleGuestLogin = () => {
-    setIsLoading(true);
-    setError(null);
-    const guestUser = `learner_${Math.floor(100 + Math.random() * 900)}`;
-    const authResult = authenticateOrRegisterUser({
-      usernameOrEmail: guestUser,
-      provider: 'Guest Pass',
-    });
-    setIsLoading(false);
-    if (!authResult.success) {
-      setError(authResult.error || 'Failed to enter as guest');
-      return;
-    }
-    setSuccessMsg(`Welcome, Guest Learner! Entering Neurobridge...`);
-    setTimeout(() => {
-      const dest = (location.state as any)?.from || '/';
-      navigate(dest, { replace: true });
-    }, 400);
+  const handleInstantDemoLogin = () => {
+    handleOpenDemoModal();
   };
 
   const handleDemoLogin = () => {
-    setUsername('alex_student');
-    setPassword('demopass123');
-    setError(null);
-    setSuccessMsg(null);
-    setIsSignUp(false);
-    setStep('auth');
+    handleOpenDemoModal();
+  };
+
+  const handleSendDemoOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setDemoError(null);
+    setDemoSuccess(null);
+    const clean = demoEmail.trim().toLowerCase();
+
+    if (!clean || !clean.includes('@')) {
+      setDemoError('Please enter a valid Gmail address to receive your 1-minute demo passcode.');
+      return;
+    }
+
+    // Single-use Gmail rule enforcement
+    if (isDemoEmailAlreadyUsed(clean)) {
+      setDemoError(
+        `❌ This Gmail address (${clean}) has already consumed its one-time demo access. The demo can only be used once per Gmail. Please use a different Gmail address to test the demo.`
+      );
+      return;
+    }
+
+    setIsDemoSubmitting(true);
+    try {
+      const res = await sendDemoOtp({ email: clean });
+      setIsDemoSubmitting(false);
+
+      if (!res.success) {
+        setDemoError(res.error || 'Failed to dispatch demo passcode.');
+        return;
+      }
+
+      setDemoStep('otp');
+      setDemoTimer(OTP_DEMO_VALIDITY_SECONDS);
+      setDemoOtpPreview(res.otpPreview || null);
+      setDemoSuccess(`Demo passcode dispatched to ${clean}! Valid for exactly 60 seconds.`);
+    } catch (err: any) {
+      setIsDemoSubmitting(false);
+      setDemoError('Network error connecting to verification service.');
+    }
+  };
+
+  const handleVerifyDemoOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setDemoError(null);
+
+    if (demoTimer <= 0) {
+      setDemoError('❌ Demo passcode has expired! (1-minute limit reached). Please request a new code with another Gmail address.');
+      return;
+    }
+
+    if (!demoOtp.trim()) {
+      setDemoError('Please enter the 6-digit passcode sent to your Gmail.');
+      return;
+    }
+
+    setIsDemoSubmitting(true);
+    const res = verifyDemoOtpAndAuthenticate(demoEmail, demoOtp);
+    setIsDemoSubmitting(false);
+
+    if (!res.success) {
+      setDemoError(res.error || 'Verification failed. Please check the code.');
+      return;
+    }
+
+    setDemoSuccess('🎉 Demo Passcode Verified! Welcome to Neurobridge.');
+    sessionStorage.setItem('just_logged_in_name', `Demo Student (${demoEmail.split('@')[0]})`);
+    setTimeout(() => {
+      const dest = (location.state as any)?.from || '/';
+      navigate(dest, { replace: true });
+    }, 500);
   };
 
   const handleSocialLogin = (provider: string) => {
@@ -548,7 +619,7 @@ export const LoginPage: React.FC = () => {
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          {/* Quick Demo Autofill button */}
+          {/* Quick Demo Button (Opens Gmail + 1-Min OTP modal) */}
           <button
             type="button"
             id="login-demo-account-button"
@@ -567,10 +638,10 @@ export const LoginPage: React.FC = () => {
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}
-            title="Autofill demo credentials"
+            title="Start One-Time Demo Session via Gmail OTP (No password required, 1-minute validity)"
           >
             <Sparkles size={14} />
-            <span>Demo Account</span>
+            <span>Demo Mode (Gmail OTP)</span>
           </button>
         </div>
       </div>
@@ -1234,7 +1305,7 @@ export const LoginPage: React.FC = () => {
                     }}
                   >
                     <Sparkles size={15} color="#38bdf8" />
-                    <span>⚡ Instant Student Access (1-Click Demo)</span>
+                    <span>⚡ Demo Student Access (Gmail + 1-Min OTP)</span>
                   </button>
 
 
@@ -1701,6 +1772,411 @@ export const LoginPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* 2. GMAIL SMTP DIRECT DISPATCH SETUP MODAL */}
+      {/* 3. ONE-TIME DEMO ACCESS MODAL (Gmail + 1-Minute OTP, Strictly Single-Use per Gmail) */}
+      {demoModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="demo-modal-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(3, 7, 18, 0.88)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            padding: '1.25rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isDemoSubmitting) {
+              setDemoModalOpen(false);
+              setDemoError(null);
+            }
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '480px',
+              backgroundColor: '#0c1220',
+              border: '1px solid rgba(56, 189, 248, 0.45)',
+              borderRadius: '20px',
+              padding: '24px 26px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(56, 189, 248, 0.25)',
+              color: '#f8fafc',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                    border: '1px solid #38bdf8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#38bdf8',
+                  }}
+                >
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h2 id="demo-modal-title" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+                    Demo Access · Gmail OTP
+                  </h2>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
+                    No password required · One-time access per Gmail
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                id="demo-modal-close-button"
+                onClick={() => {
+                  setDemoModalOpen(false);
+                  setDemoError(null);
+                }}
+                aria-label="Close demo modal"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Protocol Rules Callout */}
+            <div
+              style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(56, 189, 248, 0.2)',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                fontSize: '0.76rem',
+                color: '#cbd5e1',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontWeight: 700 }}>
+                <Clock size={13} />
+                <span>Demo Access Rules:</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: '#38bdf8' }}>•</span>
+                <span><strong>No Password:</strong> Verified purely through one-time Gmail passcode.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: '#f59e0b' }}>•</span>
+                <span><strong>60-Second Validity:</strong> Passcode expires strictly after 1 minute.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: '#ef4444' }}>•</span>
+                <span><strong>Single-Use Gmail:</strong> Each Gmail can only claim demo access once. Using the same Gmail again will be rejected.</span>
+              </div>
+            </div>
+
+            {/* Error & Success Alerts */}
+            {demoError && (
+              <div
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  color: '#fca5a5',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  marginBottom: '14px',
+                }}
+              >
+                <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{demoError}</span>
+              </div>
+            )}
+
+            {demoSuccess && (
+              <div
+                style={{
+                  backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                  color: '#86efac',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '14px',
+                }}
+              >
+                <CheckCircle2 size={16} color="#22c55e" style={{ flexShrink: 0 }} />
+                <span>{demoSuccess}</span>
+              </div>
+            )}
+
+            {/* STEP 1: Enter Gmail Address */}
+            {demoStep === 'email' ? (
+              <form onSubmit={handleSendDemoOtp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label htmlFor="demo-email-input" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                    Enter Gmail Address
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      id="demo-email-input"
+                      type="email"
+                      value={demoEmail}
+                      onChange={(e) => setDemoEmail(e.target.value)}
+                      placeholder="e.g. yourname@gmail.com"
+                      required
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        backgroundColor: '#161f31',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        borderRadius: '10px',
+                        padding: '0 40px 0 14px',
+                        color: '#f1f5f9',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.3)',
+                      }}
+                    />
+                    <Mail size={16} color="#38bdf8" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  </div>
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
+                    No password required. Passcode will be valid for 1 minute.
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  id="demo-send-otp-button"
+                  disabled={isDemoSubmitting}
+                  style={{
+                    marginTop: '6px',
+                    width: '100%',
+                    height: '42px',
+                    backgroundColor: '#0284c7',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: isDemoSubmitting ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 0 16px rgba(2, 132, 199, 0.35)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {isDemoSubmitting ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                  <span>{isDemoSubmitting ? 'Dispatching Demo Passcode...' : 'Send 1-Minute Demo Passcode'}</span>
+                </button>
+              </form>
+            ) : (
+              /* STEP 2: Enter 6-digit OTP with 60-Second Countdown */
+              <form onSubmit={handleVerifyDemoOtp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* 60s Timer Badge & Target Info */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    backgroundColor: demoTimer <= 15 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                    border: `1px solid ${demoTimer <= 15 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Mail size={13} color="#94a3b8" />
+                    <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+                      Sent to: <strong>{demoEmail}</strong>
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      color: demoTimer <= 15 ? '#ef4444' : '#f59e0b',
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    <Clock size={14} />
+                    <span>00:{demoTimer < 10 ? `0${demoTimer}` : demoTimer}</span>
+                  </div>
+                </div>
+
+                {/* Simulated preview if SMTP app password not yet configured */}
+                {demoOtpPreview && (
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(2, 132, 199, 0.12)',
+                      border: '1px dashed rgba(56, 189, 248, 0.4)',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.78rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span style={{ color: '#94a3b8' }}>Demo OTP Preview:</span>
+                    <strong style={{ color: '#38bdf8', letterSpacing: '0.15em', fontSize: '0.95rem' }}>
+                      {demoOtpPreview}
+                    </strong>
+                  </div>
+                )}
+
+                {/* OTP Input */}
+                <div>
+                  <label htmlFor="demo-otp-input" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                    Enter 6-Digit Passcode
+                  </label>
+                  <input
+                    id="demo-otp-input"
+                    type="text"
+                    maxLength={6}
+                    value={demoOtp}
+                    onChange={(e) => setDemoOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="• • • • • •"
+                    disabled={demoTimer <= 0 || isDemoSubmitting}
+                    autoFocus
+                    required
+                    style={{
+                      width: '100%',
+                      height: '46px',
+                      backgroundColor: '#161f31',
+                      border: `1px solid ${demoTimer <= 0 ? 'rgba(239, 68, 68, 0.5)' : 'rgba(245, 158, 11, 0.45)'}`,
+                      borderRadius: '10px',
+                      textAlign: 'center',
+                      fontSize: '1.25rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.3em',
+                      color: '#f8fafc',
+                      outline: 'none',
+                      boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.3)',
+                    }}
+                  />
+                </div>
+
+                {/* If Timer Expired */}
+                {demoTimer <= 0 && (
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ color: '#fca5a5', fontSize: '0.78rem', margin: '0 0 8px 0' }}>
+                      ⏱️ Passcode expired! The 60-second validity period has ended.
+                    </p>
+                    <button
+                      type="button"
+                      id="demo-try-another-email-btn"
+                      onClick={() => {
+                        setDemoStep('email');
+                        setDemoOtp('');
+                        setDemoError(null);
+                        setDemoTimer(OTP_DEMO_VALIDITY_SECONDS);
+                      }}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: '#f1f5f9',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Try With Another Gmail Address
+                    </button>
+                  </div>
+                )}
+
+                {/* Submit Verify Button */}
+                {demoTimer > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDemoStep('email');
+                        setDemoOtp('');
+                        setDemoError(null);
+                      }}
+                      style={{
+                        flex: '0 0 auto',
+                        padding: '0 14px',
+                        height: '42px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '10px',
+                        color: '#94a3b8',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Back
+                    </button>
+
+                    <button
+                      type="submit"
+                      id="demo-verify-otp-button"
+                      disabled={isDemoSubmitting || demoOtp.length < 6}
+                      style={{
+                        flex: 1,
+                        height: '42px',
+                        backgroundColor: demoOtp.length === 6 ? '#f59e0b' : 'rgba(245, 158, 11, 0.4)',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: '#0f172a',
+                        fontWeight: 800,
+                        fontSize: '0.88rem',
+                        cursor: demoOtp.length === 6 && !isDemoSubmitting ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: demoOtp.length === 6 ? '0 0 16px rgba(245, 158, 11, 0.4)' : 'none',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {isDemoSubmitting ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                      <span>{isDemoSubmitting ? 'Verifying Demo Access...' : 'Verify & Enter Demo'}</span>
+                    </button>
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 2. GMAIL SMTP DIRECT DISPATCH SETUP MODAL */}
       {smtpModalOpen && (
