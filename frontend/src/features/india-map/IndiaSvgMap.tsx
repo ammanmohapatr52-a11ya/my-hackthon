@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Compass, Sparkles, MapPin, Layers, Info } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Compass, Sparkles, MapPin, Layers, Info, ZoomIn, ZoomOut, RotateCcw, Eye } from 'lucide-react';
 import { INDIA_STATES, type IndiaStateData } from './indiaStatesData';
 
 interface IndiaSvgMapProps {
@@ -7,411 +7,147 @@ interface IndiaSvgMapProps {
   onSelectState: (stateId: string) => void;
 }
 
-// Visual definition for each State and UT on the SVG map (viewBox: 0 0 920 1000)
-interface StateMapRegion {
+// Definition for each State and UT mapped to the authentic 821 x 1024 Political Map image
+interface StateMapHotspot {
   id: string;
   name: string;
   shortCode: string;
-  labelX: number;
-  labelY: number;
-  path: string;
-  zone: string;
+  x: number;
+  y: number;
+  hitRadius: number;
+  zone: 'North' | 'South' | 'East' | 'West' | 'Central' | 'North-East' | 'UT';
   isUT?: boolean;
 }
 
-const STATE_REGIONS: StateMapRegion[] = [
-  // --- NORTHERN REGION ---
-  {
-    id: 'ladakh',
-    name: 'Ladakh',
-    shortCode: 'LA',
-    labelX: 400,
-    labelY: 95,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 330,30 L 460,35 L 530,95 L 490,165 L 430,165 L 390,140 L 335,110 Z',
-  },
-  {
-    id: 'jammu_kashmir',
-    name: 'Jammu & Kashmir',
-    shortCode: 'JK',
-    labelX: 285,
-    labelY: 115,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 330,30 L 335,110 L 290,145 L 240,135 L 235,95 L 280,65 Z',
-  },
-  {
-    id: 'himachal_pradesh',
-    name: 'Himachal Pradesh',
-    shortCode: 'HP',
-    labelX: 365,
-    labelY: 185,
-    zone: 'North',
-    path: 'M 290,145 L 390,140 L 430,165 L 420,215 L 375,230 L 325,200 L 315,170 Z',
-  },
-  {
-    id: 'punjab',
-    name: 'Punjab',
-    shortCode: 'PB',
-    labelX: 285,
-    labelY: 220,
-    zone: 'North',
-    path: 'M 240,135 L 290,145 L 315,170 L 325,200 L 315,245 L 255,255 L 235,195 Z',
-  },
-  {
-    id: 'chandigarh',
-    name: 'Chandigarh',
-    shortCode: 'CH',
-    labelX: 325,
-    labelY: 220,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 320,215 L 335,215 L 335,225 L 320,225 Z',
-  },
-  {
-    id: 'uttarakhand',
-    name: 'Uttarakhand',
-    shortCode: 'UK',
-    labelX: 435,
-    labelY: 225,
-    zone: 'North',
-    path: 'M 420,215 L 485,210 L 495,260 L 440,270 L 395,255 L 375,230 Z',
-  },
-  {
-    id: 'haryana',
-    name: 'Haryana',
-    shortCode: 'HR',
-    labelX: 325,
-    labelY: 275,
-    zone: 'North',
-    path: 'M 315,245 L 375,230 L 395,255 L 380,310 L 310,315 L 285,280 L 255,255 Z',
-  },
-  {
-    id: 'delhi',
-    name: 'Delhi (NCT)',
-    shortCode: 'DL',
-    labelX: 350,
-    labelY: 288,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 342,282 L 358,282 L 358,296 L 342,296 Z',
-  },
+const STATE_HOTSPOTS: StateMapHotspot[] = [
+  // --- NORTHERN REGION & HIMALAYAS ---
+  { id: 'ladakh', name: 'Ladakh', shortCode: 'LA', x: 380, y: 85, hitRadius: 42, zone: 'UT', isUT: true },
+  { id: 'jammu_kashmir', name: 'Jammu & Kashmir', shortCode: 'JK', x: 310, y: 120, hitRadius: 36, zone: 'UT', isUT: true },
+  { id: 'himachal_pradesh', name: 'Himachal Pradesh', shortCode: 'HP', x: 350, y: 175, hitRadius: 32, zone: 'North' },
+  { id: 'punjab', name: 'Punjab', shortCode: 'PB', x: 295, y: 205, hitRadius: 30, zone: 'North' },
+  { id: 'chandigarh', name: 'Chandigarh', shortCode: 'CH', x: 328, y: 208, hitRadius: 18, zone: 'UT', isUT: true },
+  { id: 'uttarakhand', name: 'Uttarakhand', shortCode: 'UK', x: 395, y: 225, hitRadius: 32, zone: 'North' },
+  { id: 'haryana', name: 'Haryana', shortCode: 'HR', x: 315, y: 255, hitRadius: 30, zone: 'North' },
+  { id: 'delhi', name: 'Delhi (NCT)', shortCode: 'DL', x: 355, y: 260, hitRadius: 20, zone: 'UT', isUT: true },
 
   // --- WESTERN REGION ---
-  {
-    id: 'rajasthan',
-    name: 'Rajasthan',
-    shortCode: 'RJ',
-    labelX: 230,
-    labelY: 345,
-    zone: 'West',
-    path: 'M 255,255 L 285,280 L 310,315 L 325,370 L 305,430 L 225,435 L 155,390 L 140,320 L 205,275 Z',
-  },
-  {
-    id: 'gujarat',
-    name: 'Gujarat',
-    shortCode: 'GJ',
-    labelX: 180,
-    labelY: 470,
-    zone: 'West',
-    path: 'M 155,390 L 225,435 L 265,445 L 275,520 L 240,545 L 180,540 L 140,520 L 95,470 L 105,435 L 145,435 Z',
-  },
-  {
-    id: 'dadra_nagar_haveli_daman_diu',
-    name: 'DNH & Daman Diu',
-    shortCode: 'DD',
-    labelX: 205,
-    labelY: 535,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 195,530 L 215,530 L 215,545 L 195,545 Z',
-  },
-  {
-    id: 'maharashtra',
-    name: 'Maharashtra',
-    shortCode: 'MH',
-    labelX: 325,
-    labelY: 595,
-    zone: 'West',
-    path: 'M 240,545 L 275,520 L 375,510 L 440,540 L 445,615 L 380,665 L 290,665 L 245,630 L 235,570 Z',
-  },
-  {
-    id: 'goa',
-    name: 'Goa',
-    shortCode: 'GA',
-    labelX: 265,
-    labelY: 695,
-    zone: 'West',
-    path: 'M 255,685 L 275,685 L 275,705 L 255,705 Z',
-  },
+  { id: 'rajasthan', name: 'Rajasthan', shortCode: 'RJ', x: 240, y: 315, hitRadius: 55, zone: 'West' },
+  { id: 'gujarat', name: 'Gujarat', shortCode: 'GJ', x: 175, y: 410, hitRadius: 48, zone: 'West' },
+  { id: 'maharashtra', name: 'Maharashtra', shortCode: 'MH', x: 290, y: 510, hitRadius: 55, zone: 'West' },
+  { id: 'goa', name: 'Goa', shortCode: 'GA', x: 215, y: 605, hitRadius: 18, zone: 'West' },
+  { id: 'dadra_nagar_haveli_daman_diu', name: 'DNH & Daman Diu', shortCode: 'DN', x: 185, y: 485, hitRadius: 20, zone: 'UT', isUT: true },
 
   // --- CENTRAL REGION ---
-  {
-    id: 'madhya_pradesh',
-    name: 'Madhya Pradesh',
-    shortCode: 'MP',
-    labelX: 385,
-    labelY: 450,
-    zone: 'Central',
-    path: 'M 325,370 L 440,355 L 475,385 L 515,415 L 505,480 L 440,540 L 375,510 L 265,445 L 305,430 Z',
-  },
-  {
-    id: 'chhattisgarh',
-    name: 'Chhattisgarh',
-    shortCode: 'CG',
-    labelX: 520,
-    labelY: 535,
-    zone: 'Central',
-    path: 'M 505,480 L 555,470 L 575,525 L 550,600 L 515,625 L 465,585 L 445,615 L 440,540 Z',
-  },
-  {
-    id: 'uttar_pradesh',
-    name: 'Uttar Pradesh',
-    shortCode: 'UP',
-    labelX: 460,
-    labelY: 335,
-    zone: 'North',
-    path: 'M 380,310 L 395,255 L 440,270 L 495,260 L 565,300 L 585,360 L 530,390 L 475,385 L 440,355 L 325,370 Z',
-  },
+  { id: 'madhya_pradesh', name: 'Madhya Pradesh', shortCode: 'MP', x: 385, y: 415, hitRadius: 58, zone: 'Central' },
+  { id: 'uttar_pradesh', name: 'Uttar Pradesh', shortCode: 'UP', x: 430, y: 310, hitRadius: 52, zone: 'North' },
+  { id: 'chhattisgarh', name: 'Chhattisgarh', shortCode: 'CG', x: 495, y: 450, hitRadius: 42, zone: 'Central' },
 
   // --- EASTERN REGION ---
-  {
-    id: 'bihar',
-    name: 'Bihar',
-    shortCode: 'BR',
-    labelX: 615,
-    labelY: 365,
-    zone: 'East',
-    path: 'M 565,300 L 675,320 L 685,385 L 635,405 L 585,360 Z',
-  },
-  {
-    id: 'jharkhand',
-    name: 'Jharkhand',
-    shortCode: 'JH',
-    labelX: 615,
-    labelY: 445,
-    zone: 'East',
-    path: 'M 585,360 L 635,405 L 675,425 L 655,490 L 580,485 L 555,470 L 530,390 Z',
-  },
-  {
-    id: 'west_bengal',
-    name: 'West Bengal',
-    shortCode: 'WB',
-    labelX: 685,
-    labelY: 450,
-    zone: 'East',
-    path: 'M 675,320 L 710,325 L 705,370 L 735,440 L 725,520 L 665,525 L 655,490 L 675,425 L 685,385 Z',
-  },
-  {
-    id: 'odisha',
-    name: 'Odisha',
-    shortCode: 'OD',
-    labelX: 595,
-    labelY: 550,
-    zone: 'East',
-    path: 'M 580,485 L 655,490 L 665,525 L 660,585 L 610,620 L 555,600 L 575,525 Z',
-  },
+  { id: 'bihar', name: 'Bihar', shortCode: 'BR', x: 590, y: 335, hitRadius: 38, zone: 'East' },
+  { id: 'jharkhand', name: 'Jharkhand', shortCode: 'JH', x: 580, y: 395, hitRadius: 36, zone: 'East' },
+  { id: 'west_bengal', name: 'West Bengal', shortCode: 'WB', x: 650, y: 405, hitRadius: 38, zone: 'East' },
+  { id: 'odisha', name: 'Odisha', shortCode: 'OD', x: 575, y: 465, hitRadius: 45, zone: 'East' },
 
   // --- SOUTHERN REGION ---
-  {
-    id: 'telangana',
-    name: 'Telangana',
-    shortCode: 'TG',
-    labelX: 435,
-    labelY: 660,
-    zone: 'South',
-    path: 'M 445,615 L 465,585 L 515,625 L 500,695 L 440,710 L 380,665 Z',
-  },
-  {
-    id: 'andhra_pradesh',
-    name: 'Andhra Pradesh',
-    shortCode: 'AP',
-    labelX: 475,
-    labelY: 745,
-    zone: 'South',
-    path: 'M 515,625 L 555,600 L 610,620 L 560,705 L 505,795 L 445,795 L 440,710 L 500,695 Z',
-  },
-  {
-    id: 'karnataka',
-    name: 'Karnataka',
-    shortCode: 'KA',
-    labelX: 345,
-    labelY: 740,
-    zone: 'South',
-    path: 'M 290,665 L 380,665 L 440,710 L 445,795 L 395,820 L 325,820 L 305,760 L 275,705 Z',
-  },
-  {
-    id: 'tamil_nadu',
-    name: 'Tamil Nadu',
-    shortCode: 'TN',
-    labelX: 430,
-    labelY: 870,
-    zone: 'South',
-    path: 'M 445,795 L 505,795 L 495,870 L 445,950 L 400,940 L 385,865 L 395,820 Z',
-  },
-  {
-    id: 'kerala',
-    name: 'Kerala',
-    shortCode: 'KL',
-    labelX: 355,
-    labelY: 885,
-    zone: 'South',
-    path: 'M 325,820 L 395,820 L 385,865 L 400,940 L 360,945 L 335,885 Z',
-  },
-  {
-    id: 'puducherry',
-    name: 'Puducherry',
-    shortCode: 'PY',
-    labelX: 475,
-    labelY: 840,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 468,832 L 482,832 L 482,846 L 468,846 Z',
-  },
+  { id: 'telangana', name: 'Telangana', shortCode: 'TS', x: 385, y: 540, hitRadius: 40, zone: 'South' },
+  { id: 'andhra_pradesh', name: 'Andhra Pradesh', shortCode: 'AP', x: 425, y: 620, hitRadius: 48, zone: 'South' },
+  { id: 'karnataka', name: 'Karnataka', shortCode: 'KA', x: 285, y: 640, hitRadius: 46, zone: 'South' },
+  { id: 'tamil_nadu', name: 'Tamil Nadu', shortCode: 'TN', x: 360, y: 735, hitRadius: 45, zone: 'South' },
+  { id: 'kerala', name: 'Kerala', shortCode: 'KL', x: 295, y: 745, hitRadius: 32, zone: 'South' },
+  { id: 'puducherry', name: 'Puducherry', shortCode: 'PY', x: 435, y: 700, hitRadius: 18, zone: 'UT', isUT: true },
 
-  // --- NORTH-EASTERN REGION ---
-  {
-    id: 'sikkim',
-    name: 'Sikkim',
-    shortCode: 'SK',
-    labelX: 690,
-    labelY: 295,
-    zone: 'North-East',
-    path: 'M 675,280 L 705,280 L 710,325 L 675,320 Z',
-  },
-  {
-    id: 'assam',
-    name: 'Assam',
-    shortCode: 'AS',
-    labelX: 805,
-    labelY: 375,
-    zone: 'North-East',
-    path: 'M 735,340 L 815,335 L 855,345 L 860,390 L 810,405 L 755,395 L 735,440 L 705,370 Z',
-  },
-  {
-    id: 'arunachal_pradesh',
-    name: 'Arunachal Pradesh',
-    shortCode: 'AR',
-    labelX: 835,
-    labelY: 285,
-    zone: 'North-East',
-    path: 'M 735,340 L 780,270 L 875,250 L 910,295 L 880,345 L 855,345 L 815,335 Z',
-  },
-  {
-    id: 'nagaland',
-    name: 'Nagaland',
-    shortCode: 'NL',
-    labelX: 875,
-    labelY: 395,
-    zone: 'North-East',
-    path: 'M 855,345 L 880,345 L 900,395 L 865,420 L 860,390 Z',
-  },
-  {
-    id: 'manipur',
-    name: 'Manipur',
-    shortCode: 'MN',
-    labelX: 865,
-    labelY: 450,
-    zone: 'North-East',
-    path: 'M 865,420 L 895,440 L 880,480 L 845,475 L 845,430 Z',
-  },
-  {
-    id: 'mizoram',
-    name: 'Mizoram',
-    shortCode: 'MZ',
-    labelX: 835,
-    labelY: 510,
-    zone: 'North-East',
-    path: 'M 845,475 L 870,490 L 855,545 L 820,530 L 825,480 Z',
-  },
-  {
-    id: 'tripura',
-    name: 'Tripura',
-    shortCode: 'TR',
-    labelX: 785,
-    labelY: 485,
-    zone: 'North-East',
-    path: 'M 770,465 L 805,465 L 805,510 L 775,510 Z',
-  },
-  {
-    id: 'meghalaya',
-    name: 'Meghalaya',
-    shortCode: 'ML',
-    labelX: 775,
-    labelY: 415,
-    zone: 'North-East',
-    path: 'M 735,440 L 810,405 L 815,435 L 755,445 Z',
-  },
+  // --- ISLANDS ---
+  { id: 'lakshadweep', name: 'Lakshadweep', shortCode: 'LD', x: 165, y: 735, hitRadius: 28, zone: 'UT', isUT: true },
+  { id: 'andaman_nicobar', name: 'Andaman & Nicobar', shortCode: 'AN', x: 815, y: 690, hitRadius: 38, zone: 'UT', isUT: true },
 
-  // --- ISLANDS (INSETS) ---
-  {
-    id: 'andaman_nicobar',
-    name: 'Andaman & Nicobar',
-    shortCode: 'AN',
-    labelX: 855,
-    labelY: 820,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 840,740 L 855,740 L 855,860 L 840,860 Z M 850,875 L 865,875 L 865,920 L 850,920 Z',
-  },
-  {
-    id: 'lakshadweep',
-    name: 'Lakshadweep',
-    shortCode: 'LD',
-    labelX: 215,
-    labelY: 840,
-    zone: 'UT',
-    isUT: true,
-    path: 'M 205,800 L 225,800 L 225,875 L 205,875 Z',
-  },
+  // --- NORTH-EAST REGION ---
+  { id: 'sikkim', name: 'Sikkim', shortCode: 'SK', x: 660, y: 290, hitRadius: 20, zone: 'North-East' },
+  { id: 'assam', name: 'Assam', shortCode: 'AS', x: 775, y: 315, hitRadius: 38, zone: 'North-East' },
+  { id: 'arunachal_pradesh', name: 'Arunachal Pradesh', shortCode: 'AR', x: 825, y: 255, hitRadius: 38, zone: 'North-East' },
+  { id: 'nagaland', name: 'Nagaland', shortCode: 'NL', x: 855, y: 315, hitRadius: 22, zone: 'North-East' },
+  { id: 'manipur', name: 'Manipur', shortCode: 'MN', x: 840, y: 355, hitRadius: 22, zone: 'North-East' },
+  { id: 'mizoram', name: 'Mizoram', shortCode: 'MZ', x: 825, y: 400, hitRadius: 24, zone: 'North-East' },
+  { id: 'tripura', name: 'Tripura', shortCode: 'TR', x: 755, y: 385, hitRadius: 22, zone: 'North-East' },
+  { id: 'meghalaya', name: 'Meghalaya', shortCode: 'ML', x: 745, y: 335, hitRadius: 24, zone: 'North-East' },
 ];
 
-// Zone styling configuration
-const ZONE_COLORS: Record<string, { fill: string; stroke: string; hover: string }> = {
-  North: { fill: 'rgba(56, 189, 248, 0.22)', stroke: '#38bdf8', hover: 'rgba(56, 189, 248, 0.55)' },
-  South: { fill: 'rgba(245, 158, 11, 0.22)', stroke: '#f59e0b', hover: 'rgba(245, 158, 11, 0.55)' },
-  East: { fill: 'rgba(16, 185, 129, 0.22)', stroke: '#10b981', hover: 'rgba(16, 185, 129, 0.55)' },
-  West: { fill: 'rgba(168, 85, 247, 0.22)', stroke: '#a855f7', hover: 'rgba(168, 85, 247, 0.55)' },
-  Central: { fill: 'rgba(251, 146, 60, 0.22)', stroke: '#fb923c', hover: 'rgba(251, 146, 60, 0.55)' },
-  'North-East': { fill: 'rgba(236, 72, 153, 0.22)', stroke: '#ec4899', hover: 'rgba(236, 72, 153, 0.55)' },
-  UT: { fill: 'rgba(6, 182, 212, 0.35)', stroke: '#06b6d4', hover: 'rgba(6, 182, 212, 0.75)' },
+const ZONE_BADGE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  North: { bg: 'rgba(56, 189, 248, 0.9)', border: '#38bdf8', text: '#0369a1' },
+  South: { bg: 'rgba(245, 158, 11, 0.9)', border: '#f59e0b', text: '#b45309' },
+  East: { bg: 'rgba(16, 185, 129, 0.9)', border: '#10b981', text: '#047857' },
+  West: { bg: 'rgba(168, 85, 247, 0.9)', border: '#a855f7', text: '#6b21a8' },
+  Central: { bg: 'rgba(249, 115, 22, 0.9)', border: '#f97316', text: '#c2410c' },
+  'North-East': { bg: 'rgba(236, 72, 153, 0.9)', border: '#ec4899', text: '#be185d' },
+  UT: { bg: 'rgba(6, 182, 212, 0.9)', border: '#06b6d4', text: '#0e7490' },
 };
 
 export const IndiaSvgMap: React.FC<IndiaSvgMapProps> = ({ selectedStateId, onSelectState }) => {
-  const [hoveredRegion, setHoveredRegion] = useState<StateMapRegion | null>(null);
+  const [hoveredSpot, setHoveredSpot] = useState<StateMapHotspot | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [filterType, setFilterType] = useState<'all' | 'states' | 'uts'>('all');
+  const [selectedZone, setSelectedZone] = useState<string>('All');
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [showPinsOnly, setShowPinsOnly] = useState<boolean>(false);
 
-  const selectedRegion = STATE_REGIONS.find((r) => r.id === selectedStateId);
-  const activeStateData = INDIA_STATES.find((s) => s.id === selectedStateId);
-  const hoveredStateData = hoveredRegion ? INDIA_STATES.find((s) => s.id === hoveredRegion.id) : null;
+  // Quick lookup of state data
+  const stateDataMap = useMemo(() => {
+    const map = new Map<string, IndiaStateData>();
+    INDIA_STATES.forEach((s) => map.set(s.id, s));
+    return map;
+  }, []);
 
-  const filteredRegions = STATE_REGIONS.filter((r) => {
-    if (filterType === 'states') return !r.isUT;
-    if (filterType === 'uts') return r.isUT;
-    return true;
-  });
+  const selectedSpot = useMemo(() => {
+    return STATE_HOTSPOTS.find((s) => s.id === selectedStateId);
+  }, [selectedStateId]);
 
-  const handleMouseMove = (e: React.MouseEvent<any>, reg: StateMapRegion) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setHoveredRegion(reg);
-    setTooltipPos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
+  const selectedStateData = useMemo(() => {
+    return stateDataMap.get(selectedStateId);
+  }, [selectedStateId, stateDataMap]);
+
+  const hoveredStateData = useMemo(() => {
+    if (!hoveredSpot) return null;
+    return stateDataMap.get(hoveredSpot.id);
+  }, [hoveredSpot, stateDataMap]);
+
+  // Handle Mouse Hover
+  const handleMouseMove = (e: React.MouseEvent<SVGGElement>, spot: StateMapHotspot) => {
+    const rect = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
+    if (rect) {
+      setTooltipPos({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+    setHoveredSpot(spot);
   };
 
   const handleMouseLeave = () => {
-    setHoveredRegion(null);
+    setHoveredSpot(null);
   };
 
-  // Quick list of 8 Union Territories
-  const unionTerritories = STATE_REGIONS.filter((r) => r.isUT);
+  // Filtered hotspots by zone
+  const filteredSpots = useMemo(() => {
+    if (selectedZone === 'All') return STATE_HOTSPOTS;
+    return STATE_HOTSPOTS.filter((s) => s.zone === selectedZone);
+  }, [selectedZone]);
+
+  const zones = ['All', 'North', 'South', 'East', 'West', 'Central', 'North-East', 'UT'];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
-      {/* Top Filter and Quick Union Territories Bar */}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.85rem',
+        background: 'rgba(15, 23, 42, 0.75)',
+        border: '1px solid rgba(56, 189, 248, 0.25)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '1.25rem',
+        boxShadow: '0 18px 45px rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(16px)',
+        position: 'relative',
+      }}
+    >
+      {/* Header Controls: Zone Filters, Zoom Controls, Title */}
       <div
         style={{
           display: 'flex',
@@ -419,253 +155,309 @@ export const IndiaSvgMap: React.FC<IndiaSvgMapProps> = ({ selectedStateId, onSel
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '0.75rem',
-          background: 'rgba(15, 23, 42, 0.8)',
-          padding: '10px 14px',
-          borderRadius: 'var(--radius-md, 10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: '0.75rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Compass size={18} color="var(--accent-primary, #38BDF8)" />
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>
-            Interactive Vector Map of India (36 States & UTs)
-          </span>
-        </div>
-
-        {/* Filter Switcher: All | 28 States | 8 UTs */}
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {[
-            { id: 'all', label: 'All 36' },
-            { id: 'states', label: '28 States' },
-            { id: 'uts', label: '8 Union Territories' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`btn btn-sm ${filterType === f.id ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ padding: '3px 10px', fontSize: '0.78rem' }}
-              onClick={() => setFilterType(f.id as any)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Union Territories Quick Access Chips */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px',
-          alignItems: 'center',
-          background: 'rgba(6, 182, 212, 0.08)',
-          border: '1px dashed rgba(6, 182, 212, 0.35)',
-          padding: '8px 12px',
-          borderRadius: 'var(--radius-md, 8px)',
-        }}
-      >
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#06B6D4', textTransform: 'uppercase' }}>
-          🏛️ 8 Union Territories:
-        </span>
-        {unionTerritories.map((ut) => {
-          const isSelected = ut.id === selectedStateId;
-          return (
-            <button
-              key={ut.id}
-              type="button"
-              onClick={() => onSelectState(ut.id)}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
               style={{
-                fontSize: '0.75rem',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#10b981',
+                boxShadow: '0 0 10px #10b981',
+                display: 'inline-block',
+              }}
+            />
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+              🇮🇳 India Political Map (Official HD)
+            </h3>
+            <span
+              style={{
+                fontSize: '0.72rem',
                 padding: '2px 8px',
-                borderRadius: '999px',
-                border: isSelected ? '1px solid #06B6D4' : '1px solid rgba(255, 255, 255, 0.12)',
-                background: isSelected ? '#06B6D4' : 'rgba(15, 23, 42, 0.6)',
-                color: isSelected ? '#000' : '#E2E8F0',
-                fontWeight: isSelected ? 700 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                borderRadius: '9999px',
+                background: 'rgba(56, 189, 248, 0.2)',
+                color: '#38bdf8',
+                fontWeight: 700,
               }}
             >
-              {ut.name}
-            </button>
-          );
-        })}
+              Interactive · 36 States & UTs
+            </span>
+          </div>
+          <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+            Kisi bhi rajya (state) ya pin par click karein—sabhi famous tourist locations, mandir aur photo turant open honge!
+          </p>
+        </div>
+
+        {/* Map Controls: Zoom & View toggles */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={() => setZoomLevel((z) => Math.min(z + 0.2, 1.8))}
+            title="Zoom In"
+            style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            <ZoomIn size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={() => setZoomLevel((z) => Math.max(z - 0.2, 0.8))}
+            title="Zoom Out"
+            style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            <ZoomOut size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={() => setZoomLevel(1)}
+            title="Reset Zoom"
+            style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            <RotateCcw size={14} />
+          </button>
+        </div>
       </div>
 
-      {/* Main Interactive SVG Canvas */}
+      {/* Zone Quick Pills */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          Zones:
+        </span>
+        {zones.map((zone) => (
+          <button
+            key={zone}
+            type="button"
+            onClick={() => setSelectedZone(zone)}
+            style={{
+              padding: '3px 10px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              border: selectedZone === zone ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+              background: selectedZone === zone ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+              color: selectedZone === zone ? '#ffffff' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {zone}
+          </button>
+        ))}
+      </div>
+
+      {/* Currently Selected State Quick Banner */}
+      {selectedStateData && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 14px',
+            background: 'linear-gradient(90deg, rgba(56, 189, 248, 0.15), rgba(168, 85, 247, 0.15))',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.85rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <MapPin size={18} color="#38bdf8" />
+            <div>
+              <strong style={{ color: '#ffffff', fontSize: '0.95rem' }}>
+                {selectedStateData.name} ({selectedStateData.hindiName})
+              </strong>{' '}
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                · Capital: <strong>{selectedStateData.capital}</strong> · Zone: {selectedStateData.zone}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: '#38bdf8',
+                fontWeight: 700,
+                background: 'rgba(56, 189, 248, 0.2)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+              }}
+            >
+              🏛️ {selectedStateData.famousPlaces.length} Famous Attractions
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Map Visual Area */}
       <div
         style={{
-          position: 'relative',
-          background: 'radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%)',
-          borderRadius: 'var(--radius-lg, 14px)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
+          width: '100%',
           overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-          padding: '10px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'relative',
+          borderRadius: 'var(--radius-md)',
+          background: '#071120',
+          border: '1px solid rgba(56, 189, 248, 0.15)',
+          boxShadow: 'inset 0 0 40px rgba(0, 0, 0, 0.7)',
         }}
       >
         <svg
-          viewBox="0 0 920 1000"
-          style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '720px' }}
-          role="img"
-          aria-label="Clickable SVG Map of India"
+          viewBox="0 0 821 1024"
+          style={{
+            width: '100%',
+            maxHeight: '740px',
+            height: 'auto',
+            display: 'block',
+            transform: `scale(${zoomLevel})`,
+            transformOrigin: 'center center',
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
         >
           <defs>
-            {/* Glow Filter for Active State */}
-            <filter id="active-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="6" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            {/* Glowing filter for active state pin */}
+            <filter id="beacon-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
             </filter>
 
-            {/* Pattern grid for Indian Ocean Background */}
-            <pattern id="ocean-grid" width="30" height="30" patternUnits="userSpaceOnUse">
-              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255, 255, 255, 0.025)" strokeWidth="0.5" />
-            </pattern>
+            {/* Subtle drop shadow for markers */}
+            <filter id="marker-shadow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.75" />
+            </filter>
           </defs>
 
-          {/* Background water pattern */}
-          <rect width="920" height="1000" fill="url(#ocean-grid)" />
-
-          {/* Geographical Water Body Labels */}
-          <text x="140" y="660" fill="rgba(255, 255, 255, 0.12)" fontSize="16" fontWeight="bold" letterSpacing="4">
-            ARABIAN SEA
-          </text>
-          <text x="640" y="660" fill="rgba(255, 255, 255, 0.12)" fontSize="16" fontWeight="bold" letterSpacing="4">
-            BAY OF BENGAL
-          </text>
-          <text x="360" y="985" fill="rgba(255, 255, 255, 0.12)" fontSize="16" fontWeight="bold" letterSpacing="4">
-            INDIAN OCEAN
-          </text>
-
-          {/* Inset Borders for Islands */}
-          {/* Lakshadweep Inset */}
-          <rect
-            x="180"
-            y="770"
-            width="80"
-            height="130"
-            fill="rgba(6, 182, 212, 0.05)"
-            stroke="rgba(6, 182, 212, 0.3)"
-            strokeDasharray="4 4"
-            rx="6"
+          {/* BASE LAYER: User's Authentic High-Resolution India Political Map Photo */}
+          <image
+            href="/images/india_political_map.jpg"
+            x="0"
+            y="0"
+            width="821"
+            height="1024"
+            preserveAspectRatio="xMidYMid meet"
           />
-          <text x="220" y="762" fill="rgba(6, 182, 212, 0.8)" fontSize="10" fontWeight="bold" textAnchor="middle">
-            LAKSHADWEEP (UT)
-          </text>
 
-          {/* Andaman & Nicobar Inset */}
-          <rect
-            x="825"
-            y="710"
-            width="75"
-            height="230"
-            fill="rgba(6, 182, 212, 0.05)"
-            stroke="rgba(6, 182, 212, 0.3)"
-            strokeDasharray="4 4"
-            rx="6"
-          />
-          <text x="862" y="702" fill="rgba(6, 182, 212, 0.8)" fontSize="10" fontWeight="bold" textAnchor="middle">
-            ANDAMAN & NICOBAR (UT)
-          </text>
-
-          {/* Render All State & UT Regions */}
-          {filteredRegions.map((reg) => {
-            const isSelected = reg.id === selectedStateId;
-            const isHovered = hoveredRegion?.id === reg.id;
-            const styling = ZONE_COLORS[reg.zone] || ZONE_COLORS.North;
+          {/* Interactive State Hitspots & Hotspot Badges */}
+          {filteredSpots.map((spot) => {
+            const isSelected = spot.id === selectedStateId;
+            const isHovered = hoveredSpot?.id === spot.id;
+            const badgeStyle = ZONE_BADGE_COLORS[spot.zone] || ZONE_BADGE_COLORS.North;
 
             return (
               <g
-                key={reg.id}
-                onClick={() => onSelectState(reg.id)}
-                onMouseMove={(e) => handleMouseMove(e, reg)}
+                key={spot.id}
+                onClick={() => onSelectState(spot.id)}
+                onMouseMove={(e) => handleMouseMove(e, spot)}
                 onMouseLeave={handleMouseLeave}
                 style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
                 tabIndex={0}
                 role="button"
-                aria-label={`Select ${reg.name}`}
+                aria-label={`Select ${spot.name}`}
               >
-                {/* State Boundary Path */}
-                <path
-                  d={reg.path}
-                  fill={isSelected ? '#38bdf8' : isHovered ? styling.hover : styling.fill}
-                  stroke={isSelected ? '#ffffff' : styling.stroke}
-                  strokeWidth={isSelected ? 3.5 : isHovered ? 2.5 : 1.25}
-                  strokeLinejoin="round"
-                  filter={isSelected ? 'url(#active-glow)' : undefined}
+                {/* Invisible Broad Clickable Hit Area */}
+                <circle
+                  cx={spot.x}
+                  cy={spot.y}
+                  r={spot.hitRadius}
+                  fill={isSelected ? 'rgba(56, 189, 248, 0.18)' : isHovered ? 'rgba(255, 255, 255, 0.15)' : 'transparent'}
+                  stroke={isSelected ? '#38bdf8' : isHovered ? 'rgba(255, 255, 255, 0.4)' : 'transparent'}
+                  strokeWidth={isSelected ? 2 : 1}
+                  strokeDasharray={isSelected ? '4 2' : undefined}
                 />
 
-                {/* State Abbreviation Code Label */}
+                {/* State Badge Background Pill */}
+                <rect
+                  x={spot.x - 17}
+                  y={spot.y - 12}
+                  width="34"
+                  height="24"
+                  rx="6"
+                  fill={isSelected ? '#38bdf8' : isHovered ? '#ffffff' : 'rgba(15, 23, 42, 0.88)'}
+                  stroke={isSelected ? '#ffffff' : badgeStyle.border}
+                  strokeWidth={isSelected ? 2.5 : 1.5}
+                  filter="url(#marker-shadow)"
+                  style={{
+                    transition: 'all 0.2s ease',
+                    transformOrigin: `${spot.x}px ${spot.y}px`,
+                    transform: isSelected ? 'scale(1.15)' : isHovered ? 'scale(1.1)' : 'scale(1)',
+                  }}
+                />
+
+                {/* State Code Abbreviation */}
                 <text
-                  x={reg.labelX}
-                  y={reg.labelY}
-                  fill={isSelected ? '#000000' : '#FFFFFF'}
-                  fontSize={reg.isUT ? '9' : '11'}
-                  fontWeight="bold"
+                  x={spot.x}
+                  y={spot.y + 4}
+                  fill={isSelected ? '#000000' : isHovered ? '#0f172a' : '#ffffff'}
+                  fontSize="11"
+                  fontWeight="800"
+                  fontFamily="system-ui, -apple-system, sans-serif"
                   textAnchor="middle"
                   style={{
                     pointerEvents: 'none',
                     userSelect: 'none',
-                    textShadow: isSelected ? 'none' : '0 1px 3px rgba(0,0,0,0.85)',
+                    letterSpacing: '0.5px',
                   }}
                 >
-                  {reg.shortCode}
+                  {spot.shortCode}
                 </text>
               </g>
             );
           })}
 
-          {/* Active State Animated Beacon Indicator */}
-          {selectedRegion && (
-            <g style={{ pointerEvents: 'none' }}>
-              <circle
-                cx={selectedRegion.labelX}
-                cy={selectedRegion.labelY - 14}
-                r="10"
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="2"
-                opacity="0.8"
-              >
-                <animate attributeName="r" values="6;16;6" dur="2s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.9;0.1;0.9" dur="2s" repeatCount="indefinite" />
+          {/* Active State Animated Pulsing Beacon Ring */}
+          {selectedSpot && (
+            <g style={{ pointerEvents: 'none' }} filter="url(#beacon-glow)">
+              {/* Outer Pulsing Wave 1 */}
+              <circle cx={selectedSpot.x} cy={selectedSpot.y} r="20" fill="none" stroke="#38bdf8" strokeWidth="2.5" opacity="0.9">
+                <animate attributeName="r" values="14;34;14" dur="2.2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.9;0.05;0.9" dur="2.2s" repeatCount="indefinite" />
               </circle>
-              <circle
-                cx={selectedRegion.labelX}
-                cy={selectedRegion.labelY - 14}
-                r="4.5"
-                fill="#ffffff"
-                stroke="#0284c7"
-                strokeWidth="2"
-              />
+
+              {/* Outer Pulsing Wave 2 (offset) */}
+              <circle cx={selectedSpot.x} cy={selectedSpot.y} r="26" fill="none" stroke="#a855f7" strokeWidth="1.8" opacity="0.6">
+                <animate attributeName="r" values="20;44;20" dur="2.2s" begin="0.5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.7;0;0.7" dur="2.2s" begin="0.5s" repeatCount="indefinite" />
+              </circle>
+
+              {/* Pointer Center Dot */}
+              <circle cx={selectedSpot.x} cy={selectedSpot.y - 20} r="5" fill="#38bdf8" stroke="#ffffff" strokeWidth="2" />
             </g>
           )}
         </svg>
 
         {/* Floating Real-Time Hover Tooltip */}
-        {hoveredRegion && hoveredStateData && (
+        {hoveredSpot && hoveredStateData && (
           <div
             style={{
               position: 'absolute',
-              left: `${Math.min(tooltipPos.x + 15, 620)}px`,
-              top: `${Math.max(tooltipPos.y - 120, 10)}px`,
+              left: `${Math.min(tooltipPos.x + 18, 560)}px`,
+              top: `${Math.max(tooltipPos.y - 140, 15)}px`,
               pointerEvents: 'none',
-              background: 'rgba(15, 23, 42, 0.95)',
+              background: 'rgba(15, 23, 42, 0.96)',
               border: '1px solid #38bdf8',
               borderRadius: '10px',
               padding: '10px 14px',
-              boxShadow: '0 12px 30px rgba(0, 0, 0, 0.65)',
-              backdropFilter: 'blur(12px)',
-              maxWidth: '280px',
-              zIndex: 30,
+              boxShadow: '0 16px 36px rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(16px)',
+              maxWidth: '300px',
+              zIndex: 35,
               display: 'flex',
               flexDirection: 'column',
               gap: '6px',
+              animation: 'fadeIn 0.15s ease-out',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong style={{ fontSize: '0.95rem', color: '#fff' }}>
+              <strong style={{ fontSize: '0.98rem', color: '#ffffff' }}>
                 {hoveredStateData.name} ({hoveredStateData.hindiName})
               </strong>
               <span
@@ -673,7 +465,7 @@ export const IndiaSvgMap: React.FC<IndiaSvgMapProps> = ({ selectedStateId, onSel
                   fontSize: '0.68rem',
                   padding: '2px 6px',
                   borderRadius: '4px',
-                  background: hoveredRegion.isUT ? 'rgba(6, 182, 212, 0.25)' : 'rgba(56, 189, 248, 0.25)',
+                  background: hoveredSpot.isUT ? 'rgba(6, 182, 212, 0.25)' : 'rgba(56, 189, 248, 0.25)',
                   color: '#38bdf8',
                   fontWeight: 700,
                 }}
@@ -683,68 +475,90 @@ export const IndiaSvgMap: React.FC<IndiaSvgMapProps> = ({ selectedStateId, onSel
             </div>
 
             <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-              🏛️ Capital: <strong>{hoveredStateData.capital}</strong>
+              🏛️ Capital: <strong>{hoveredStateData.capital}</strong> · Area: {hoveredStateData.areaKm2}
             </div>
 
-            {/* Thumbnail of Famous Monument */}
+            {/* Thumbnail of Top Tourist Landmark */}
             {hoveredStateData.famousPlaces[0] && (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  padding: '4px 6px',
+                  borderRadius: '6px',
+                  marginTop: '2px',
+                }}
+              >
                 <img
                   src={hoveredStateData.famousPlaces[0].imageUrl}
                   alt={hoveredStateData.famousPlaces[0].name}
-                  style={{ width: '48px', height: '36px', borderRadius: '4px', objectFit: 'cover' }}
+                  style={{ width: '52px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
                 />
-                <div style={{ fontSize: '0.72rem', color: '#E2E8F0', lineHeight: 1.2 }}>
-                  <div style={{ fontWeight: 600, color: '#38bdf8' }}>{hoveredStateData.famousPlaces[0].name}</div>
-                  <div style={{ color: 'var(--text-muted)' }}>{hoveredStateData.famousPlaces[0].category}</div>
+                <div style={{ fontSize: '0.74rem', color: '#E2E8F0', lineHeight: 1.25 }}>
+                  <div style={{ fontWeight: 700, color: '#38bdf8' }}>{hoveredStateData.famousPlaces[0].name}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>
+                    {hoveredStateData.famousPlaces[0].category}
+                  </div>
                 </div>
               </div>
             )}
 
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '4px' }}>
-              🐦 Bird: {hoveredStateData.symbols.bird.name} · 🐅 Animal: {hoveredStateData.symbols.animal.name}
+            <div
+              style={{
+                fontSize: '0.72rem',
+                color: '#94A3B8',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                paddingTop: '4px',
+                display: 'flex',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span>🐦 {hoveredStateData.symbols.bird.name.split(' ')[0]}</span>
+              <span>🐅 {hoveredStateData.symbols.animal.name.split(' ')[0]}</span>
+              <span style={{ color: '#10b981', fontWeight: 600 }}>Click to View All &rarr;</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Map Zone Legend */}
+      {/* Quick Union Territories Selector Bar */}
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '12px',
-          justifyContent: 'center',
-          fontSize: '0.75rem',
-          color: 'var(--text-secondary)',
-          background: 'rgba(255, 255, 255, 0.02)',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'rgba(255, 255, 255, 0.03)',
           padding: '8px 12px',
           borderRadius: 'var(--radius-md)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.06)',
         }}
       >
-        <span style={{ fontWeight: 700, color: '#fff' }}>Zones:</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '2px', background: '#38bdf8' }} /> North
+        <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#38bdf8' }}>
+          8 Union Territories (UTs):
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '2px', background: '#f59e0b' }} /> South
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '2px', background: '#10b981' }} /> East
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '2px', background: '#a855f7' }} /> West
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '2px', background: '#fb923c' }} /> Central
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '2px', background: '#ec4899' }} /> North-East
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: 10, height: 10, borderRadius: '2px', background: '#06b6d4' }} /> Union Territory (UT)
-        </span>
+        {STATE_HOTSPOTS.filter((s) => s.isUT).map((ut) => (
+          <button
+            key={ut.id}
+            type="button"
+            onClick={() => onSelectState(ut.id)}
+            style={{
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontSize: '0.72rem',
+              fontWeight: selectedStateId === ut.id ? 700 : 500,
+              background: selectedStateId === ut.id ? '#0284c7' : 'rgba(6, 182, 212, 0.12)',
+              border: selectedStateId === ut.id ? '1px solid #38bdf8' : '1px solid rgba(6, 182, 212, 0.25)',
+              color: selectedStateId === ut.id ? '#ffffff' : '#7dd3fc',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {ut.name}
+          </button>
+        ))}
       </div>
     </div>
   );

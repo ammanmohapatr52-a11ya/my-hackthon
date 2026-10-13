@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MapPin,
@@ -34,6 +34,7 @@ export const IndiaMapComponent: React.FC = () => {
   const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
   const [activeTab, setActiveTab] = useState<'overview' | 'symbols' | 'places' | 'culture'>('places');
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [placeCategoryFilter, setPlaceCategoryFilter] = useState<string>('All');
 
   // Fullscreen photo lightbox modal
   const [lightbox, setLightbox] = useState<{
@@ -41,7 +42,16 @@ export const IndiaMapComponent: React.FC = () => {
     title: string;
     category?: string;
     description?: string;
+    bestTimeToVisit?: string;
+    highlights?: string[];
+    nearestCity?: string;
+    entryFee?: string;
   } | null>(null);
+
+  // Reset tourist category filter whenever a new state is clicked
+  useEffect(() => {
+    setPlaceCategoryFilter('All');
+  }, [selectedStateId]);
 
   // Filtered states for search & zone
   const filteredStates = useMemo(() => {
@@ -65,7 +75,19 @@ export const IndiaMapComponent: React.FC = () => {
     return INDIA_STATES.find((s) => s.id === selectedStateId) || INDIA_STATES[0];
   }, [selectedStateId]);
 
-  // Voice narration of active state
+  // Available tourist categories for the current state
+  const availableCategories = useMemo(() => {
+    const cats = Array.from(new Set(activeState.famousPlaces.map((p) => p.category)));
+    return ['All', ...cats];
+  }, [activeState]);
+
+  // Filtered tourist places for the current category
+  const filteredPlaces = useMemo(() => {
+    if (placeCategoryFilter === 'All') return activeState.famousPlaces;
+    return activeState.famousPlaces.filter((p) => p.category === placeCategoryFilter);
+  }, [activeState, placeCategoryFilter]);
+
+  // Voice narration of active state with tourist attractions
   const handleNarrate = () => {
     if (isSpeaking) {
       assistantVoice.stop();
@@ -74,19 +96,20 @@ export const IndiaMapComponent: React.FC = () => {
     }
 
     let speechText = '';
+    const touristNames = activeState.famousPlaces.map((p) => p.name).join(', ');
     if (language === 'hi') {
-      speechText = `${activeState.hindiName}: राजधानी ${activeState.capital} है। राज्य पक्षी ${activeState.symbols.bird.name} है, और राज्य पशु ${activeState.symbols.animal.name} है। प्रमुख दर्शनीय स्थल: ${activeState.famousPlaces.map((p) => p.name).join(', ')}।`;
+      speechText = `${activeState.hindiName}: राजधानी ${activeState.capital} है। प्रमुख पर्यटन और दर्शनीय स्थल हैं: ${activeState.famousPlaces.map((p) => p.hindiName || p.name).join(', ')}। राज्य पक्षी ${activeState.symbols.bird.name} है, और राज्य पशु ${activeState.symbols.animal.name} है।`;
     } else if (language === 'or') {
-      speechText = `${activeState.odiaName}: ରାଜଧାନୀ ${activeState.capital} ଅଟେ। ରାଜ୍ୟ ପକ୍ଷୀ ${activeState.symbols.bird.name} ଏବଂ ରାଜ୍ୟ ପଶୁ ${activeState.symbols.animal.name} ଅଟେ। ପ୍ରମୁଖ ସ୍ଥାନଗୁଡ଼ିକ: ${activeState.famousPlaces.map((p) => p.name).join(', ')}।`;
+      speechText = `${activeState.odiaName}: ରାଜଧାନୀ ${activeState.capital} ଅଟେ। ପ୍ରମୁଖ ପର୍ଯ୍ୟଟନ ସ୍ଥାନଗୁଡ଼ିକ: ${touristNames}। ରାଜ୍ୟ ପକ୍ଷୀ ${activeState.symbols.bird.name} ଏବଂ ରାଜ୍ୟ ପଶୁ ${activeState.symbols.animal.name} ଅଟେ।`;
     } else {
-      speechText = `${activeState.name}: The capital is ${activeState.capital}. The state bird is the ${activeState.symbols.bird.name}, and the state animal is the ${activeState.symbols.animal.name}. Famous attractions include ${activeState.famousPlaces.map((p) => p.name).join(', ')}.`;
+      speechText = `${activeState.name}: The capital is ${activeState.capital}. Top tourist destinations and landmarks include ${touristNames}. The state bird is the ${activeState.symbols.bird.name}, and the state animal is the ${activeState.symbols.animal.name}.`;
     }
 
     setIsSpeaking(true);
     assistantVoice.speak(speechText, false, language);
     setTimeout(() => {
       setIsSpeaking(false);
-    }, 14000);
+    }, 16000);
   };
 
   const zones = ['All', 'North', 'South', 'East', 'West', 'Central', 'North-East', 'UT'];
@@ -461,37 +484,99 @@ export const IndiaMapComponent: React.FC = () => {
             </button>
           </div>
 
-          {/* Tab 1: Famous Places & Buildings with REAL High-Resolution Imagery */}
+          {/* Tab 1: Famous Tourist Places & Heritage Destinations */}
           {activeTab === 'places' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Award size={18} color="var(--accent-primary)" />
-                    Famous Buildings, Monuments & Heritage of {activeState.name}
-                  </h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click photo to expand</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    marginBottom: '1rem',
+                  }}
+                >
+                  <div>
+                    <h3
+                      style={{
+                        fontSize: '1.2rem',
+                        fontWeight: 800,
+                        margin: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        color: '#ffffff',
+                      }}
+                    >
+                      <Award size={20} color="var(--accent-primary)" />
+                      Top Tourist Destinations & Heritage of {activeState.name} ({activeState.famousPlaces.length} Locations)
+                    </h3>
+                    <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      Har destination ka photo, category, best time to visit aur highlights explore karein. Click photo to zoom.
+                    </p>
+                  </div>
+
+                  {/* Tourist Category Filters */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {availableCategories.map((cat) => {
+                      const count =
+                        cat === 'All'
+                          ? activeState.famousPlaces.length
+                          : activeState.famousPlaces.filter((p) => p.category === cat).length;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setPlaceCategoryFilter(cat)}
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            border: placeCategoryFilter === cat ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                            background: placeCategoryFilter === cat ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                            color: placeCategoryFilter === cat ? '#ffffff' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {cat} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
+                {/* Grid of Rich Tourist Destination Cards */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                    gap: '1rem',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
+                    gap: '1.15rem',
                   }}
                 >
-                  {activeState.famousPlaces.map((place, idx) => (
+                  {filteredPlaces.map((place, idx) => (
                     <div
                       key={idx}
                       style={{
-                        background: 'rgba(30, 41, 59, 0.6)',
+                        background: 'rgba(30, 41, 59, 0.65)',
                         border: '1px solid rgba(255, 255, 255, 0.08)',
                         borderRadius: 'var(--radius-md)',
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
                         cursor: 'pointer',
-                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                        e.currentTarget.style.transform = 'translateY(0)';
                       }}
                       onClick={() =>
                         setLightbox({
@@ -499,11 +584,16 @@ export const IndiaMapComponent: React.FC = () => {
                           title: place.name,
                           category: place.category,
                           description: place.description,
+                          bestTimeToVisit: place.bestTimeToVisit,
+                          highlights: place.highlights,
+                          nearestCity: place.nearestCity,
+                          entryFee: place.entryFee,
                         })
                       }
-                      title="Click to view real high-resolution photo"
+                      title="Click to view full photo and complete tour guide"
                     >
-                      <div style={{ height: '160px', width: '100%', position: 'relative', overflow: 'hidden' }}>
+                      {/* Photo Header */}
+                      <div style={{ height: '180px', width: '100%', position: 'relative', overflow: 'hidden' }}>
                         <img
                           src={place.imageUrl}
                           alt={place.name}
@@ -515,53 +605,118 @@ export const IndiaMapComponent: React.FC = () => {
                           }}
                           loading="lazy"
                         />
+                        {/* Category Badge */}
                         <span
                           style={{
                             position: 'absolute',
                             top: '8px',
                             left: '8px',
-                            background: 'rgba(0, 0, 0, 0.75)',
+                            background: 'rgba(15, 23, 42, 0.88)',
                             backdropFilter: 'blur(8px)',
-                            padding: '2px 8px',
+                            padding: '3px 9px',
                             borderRadius: '9999px',
                             fontSize: '0.7rem',
-                            fontWeight: 600,
+                            fontWeight: 700,
                             color: '#38bdf8',
-                            border: '1px solid rgba(56, 189, 248, 0.3)',
+                            border: '1px solid rgba(56, 189, 248, 0.35)',
                           }}
                         >
                           {place.category}
                         </span>
+
+                        {/* Best Time to Visit pill on top right */}
+                        {place.bestTimeToVisit && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              right: '8px',
+                              background: 'rgba(15, 23, 42, 0.88)',
+                              backdropFilter: 'blur(8px)',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              color: '#f59e0b',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
+                            }}
+                          >
+                            📅 {place.bestTimeToVisit}
+                          </span>
+                        )}
+
+                        {/* Zoom Icon bottom right */}
                         <div
                           style={{
                             position: 'absolute',
                             bottom: '8px',
                             right: '8px',
-                            background: 'rgba(0, 0, 0, 0.65)',
-                            padding: '4px',
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            padding: '5px',
                             borderRadius: '50%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#fff',
+                            color: '#ffffff',
                           }}
                         >
                           <Maximize2 size={13} />
                         </div>
                       </div>
 
-                      <div style={{ padding: '0.9rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>
-                          {place.name}
+                      {/* Card Body */}
+                      <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '1rem', color: '#ffffff' }}>
+                            {place.name}
+                          </div>
                           {place.hindiName && (
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', fontWeight: 500 }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                               {place.hindiName}
-                            </span>
+                            </div>
                           )}
                         </div>
-                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+
+                        {/* Nearest Transit Location */}
+                        {place.nearestCity && (
+                          <div style={{ fontSize: '0.74rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span>📍 Nearest:</span>
+                            <strong style={{ color: '#e2e8f0' }}>{place.nearestCity}</strong>
+                          </div>
+                        )}
+
+                        {/* Key Highlights Tags */}
+                        {place.highlights && place.highlights.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '3px 0' }}>
+                            {place.highlights.map((h, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  fontSize: '0.68rem',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  background: 'rgba(56, 189, 248, 0.1)',
+                                  border: '1px solid rgba(56, 189, 248, 0.2)',
+                                  color: '#7dd3fc',
+                                }}
+                              >
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Description */}
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>
                           {place.description}
                         </p>
+
+                        {/* Entry Fee (if available) */}
+                        {place.entryFee && (
+                          <div style={{ fontSize: '0.72rem', color: '#10b981', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '6px', marginTop: '4px' }}>
+                            🎫 Entry: <strong>{place.entryFee}</strong>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -895,25 +1050,64 @@ export const IndiaMapComponent: React.FC = () => {
             </div>
 
             {/* Photo Caption & Context */}
-            <div style={{ padding: '1.25rem' }}>
-              {lightbox.category && (
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    color: '#38bdf8',
-                    background: 'rgba(56, 189, 248, 0.15)',
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                  }}
-                >
-                  {lightbox.category}
-                </span>
-              )}
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '8px 0 4px 0', color: '#fff' }}>
+            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                {lightbox.category && (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      color: '#38bdf8',
+                      background: 'rgba(56, 189, 248, 0.15)',
+                      padding: '3px 10px',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                    }}
+                  >
+                    {lightbox.category}
+                  </span>
+                )}
+                {lightbox.bestTimeToVisit && (
+                  <span style={{ fontSize: '0.76rem', color: '#f59e0b', fontWeight: 600 }}>
+                    📅 Best Time: {lightbox.bestTimeToVisit}
+                  </span>
+                )}
+              </div>
+
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '2px 0', color: '#fff' }}>
                 {lightbox.title}
               </h3>
+
+              {lightbox.nearestCity && (
+                <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                  📍 Nearest: <strong style={{ color: '#e2e8f0' }}>{lightbox.nearestCity}</strong>
+                  {lightbox.entryFee && (
+                    <span> · 🎫 Entry: <strong style={{ color: '#10b981' }}>{lightbox.entryFee}</strong></span>
+                  )}
+                </div>
+              )}
+
+              {lightbox.highlights && lightbox.highlights.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '4px 0' }}>
+                  {lightbox.highlights.map((h, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: '0.74rem',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        color: '#7dd3fc',
+                      }}
+                    >
+                      ✓ {h}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {lightbox.description && (
                 <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   {lightbox.description}
