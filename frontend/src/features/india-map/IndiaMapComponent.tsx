@@ -15,8 +15,12 @@ import {
   ExternalLink,
   ChevronRight,
   Info,
+  X,
+  Maximize2,
+  Globe2,
 } from 'lucide-react';
 import { INDIA_STATES, type IndiaStateData } from './indiaStatesData';
+import { IndiaSvgMap } from './IndiaSvgMap';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { assistantVoice } from '../../services/assistantVoice';
 
@@ -27,10 +31,19 @@ export const IndiaMapComponent: React.FC = () => {
   const [selectedStateId, setSelectedStateId] = useState<string>('odisha');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [activeTab, setActiveTab] = useState<'overview' | 'symbols' | 'places' | 'culture'>('overview');
+  const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
+  const [activeTab, setActiveTab] = useState<'overview' | 'symbols' | 'places' | 'culture'>('places');
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
-  // Filtered states
+  // Fullscreen photo lightbox modal
+  const [lightbox, setLightbox] = useState<{
+    url: string;
+    title: string;
+    category?: string;
+    description?: string;
+  } | null>(null);
+
+  // Filtered states for search & zone
   const filteredStates = useMemo(() => {
     return INDIA_STATES.filter((st) => {
       const matchesZone = selectedZone === 'All' || st.zone === selectedZone;
@@ -76,11 +89,11 @@ export const IndiaMapComponent: React.FC = () => {
     }, 14000);
   };
 
-  const zones = ['All', 'East', 'West', 'North', 'South', 'North-East', 'UT'];
+  const zones = ['All', 'North', 'South', 'East', 'West', 'Central', 'North-East', 'UT'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
-      {/* Search & Zone Filter Bar */}
+      {/* Top Filter and View Mode Switcher */}
       <div
         className="card"
         style={{
@@ -110,136 +123,171 @@ export const IndiaMapComponent: React.FC = () => {
           <input
             type="text"
             className="input-field"
-            placeholder="Search state, capital, bird, monument (e.g. Odisha, Taj Mahal)..."
+            placeholder="Search 36 states & UTs, monuments, birds, animals..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ paddingLeft: '2.5rem', width: '100%' }}
-            aria-label="Search Indian States"
+            aria-label="Search Indian States and Union Territories"
           />
         </div>
 
-        {/* Zone Filter Buttons */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Compass size={14} color="var(--accent-primary)" /> Zone:
-          </span>
-          {zones.map((z) => (
+        {/* View Mode Toggle & Zone Filters */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+          {/* Map vs Grid Toggle */}
+          <div
+            style={{
+              display: 'inline-flex',
+              background: 'rgba(255, 255, 255, 0.06)',
+              padding: '3px',
+              borderRadius: '999px',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
             <button
-              key={z}
               type="button"
-              className={`btn btn-sm ${selectedZone === z ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() => setSelectedZone(z)}
-              style={{
-                fontSize: '0.8rem',
-                padding: '4px 10px',
-                borderRadius: '9999px',
-                border: selectedZone === z ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
-              }}
+              className={`btn btn-sm ${viewMode === 'map' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setViewMode('map')}
+              style={{ padding: '3px 12px', fontSize: '0.78rem', borderRadius: '999px' }}
             >
-              {z}
+              🗺️ Visual Map of India
             </button>
-          ))}
+            <button
+              type="button"
+              className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setViewMode('grid')}
+              style={{ padding: '3px 12px', fontSize: '0.78rem', borderRadius: '999px' }}
+            >
+              📋 State Cards ({filteredStates.length})
+            </button>
+          </div>
+
+          {/* Zones */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Zone:</span>
+            {zones.map((z) => (
+              <button
+                key={z}
+                type="button"
+                className={`btn btn-sm ${selectedZone === z ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setSelectedZone(z)}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  border: selectedZone === z ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                {z}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Main Grid: Left State Selector / Visual Map & Right State Dossier */}
+      {/* Main Container: Map/Selector on Left & Comprehensive Dossier on Right */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
           gap: '1.5rem',
           alignItems: 'start',
         }}
       >
-        {/* Left Column: Interactive State Tiles & Visual Selector */}
-        <div
-          className="card"
-          style={{
-            padding: '1.25rem',
-            background: 'rgba(15, 23, 42, 0.65)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            maxHeight: '760px',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MapPin size={18} color="var(--accent-primary)" />
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>
-                Select State or UT ({filteredStates.length})
-              </h2>
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Click to inspect</span>
-          </div>
+        {/* Left Column: Interactive Map of India or State Cards List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {viewMode === 'map' ? (
+            <IndiaSvgMap selectedStateId={selectedStateId} onSelectState={setSelectedStateId} />
+          ) : (
+            <div
+              className="card"
+              style={{
+                padding: '1.25rem',
+                background: 'rgba(15, 23, 42, 0.65)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                maxHeight: '760px',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MapPin size={18} color="var(--accent-primary)" />
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>
+                    States & Union Territories ({filteredStates.length})
+                  </h2>
+                </div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Click to view details</span>
+              </div>
 
-          <div
-            style={{
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              paddingRight: '4px',
-            }}
-          >
-            {filteredStates.map((st) => {
-              const isSelected = st.id === selectedStateId;
-              return (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => setSelectedStateId(st.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.75rem 1rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-                    background: isSelected
-                      ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(2, 132, 199, 0.12) 100%)'
-                      : 'rgba(30, 41, 59, 0.4)',
-                    boxShadow: isSelected ? '0 0 16px rgba(56, 189, 248, 0.25)' : 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div
+              <div
+                style={{
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  paddingRight: '4px',
+                }}
+              >
+                {filteredStates.map((st) => {
+                  const isSelected = st.id === selectedStateId;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setSelectedStateId(st.id)}
                       style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '50%',
-                        background: isSelected ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.08)',
-                        color: isSelected ? '#ffffff' : 'var(--text-secondary)',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
+                        justifyContent: 'space-between',
+                        padding: '0.75rem 1rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+                        background: isSelected
+                          ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(2, 132, 199, 0.12) 100%)'
+                          : 'rgba(30, 41, 59, 0.4)',
+                        boxShadow: isSelected ? '0 0 16px rgba(56, 189, 248, 0.25)' : 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease',
                       }}
                     >
-                      {st.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.95rem', color: isSelected ? '#38bdf8' : 'var(--text-primary)' }}>
-                        {st.name} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>({st.hindiName})</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '50%',
+                            background: isSelected ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.08)',
+                            color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                          }}
+                        >
+                          {st.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.95rem', color: isSelected ? '#38bdf8' : 'var(--text-primary)' }}>
+                            {st.name} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>({st.hindiName})</span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                            Capital: {st.capital.split(' ')[0]} · {st.zone} India
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                        Capital: {st.capital.split(' ')[0]} · {st.zone} India
-                      </div>
-                    </div>
-                  </div>
 
-                  <ChevronRight size={16} color={isSelected ? '#38bdf8' : 'var(--text-muted)'} />
-                </button>
-              );
-            })}
-          </div>
+                      <ChevronRight size={16} color={isSelected ? '#38bdf8' : 'var(--text-muted)'} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right Column: Comprehensive State Dossier */}
+        {/* Right Column: Comprehensive State Dossier with Real Photos & Symbols */}
         <div
           className="card"
           style={{
@@ -382,39 +430,48 @@ export const IndiaMapComponent: React.FC = () => {
             </div>
           </div>
 
-          {/* Sub-Tabs: Overview, State Symbols, Famous Places, Culture */}
-          <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          {/* Sub-Tabs: Famous Places (Default), State Symbols, Culture */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
             <button
               type="button"
-              className={`btn btn-sm ${activeTab === 'overview' ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() => setActiveTab('overview')}
+              className={`btn btn-sm ${activeTab === 'places' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setActiveTab('places')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              Overview & Places
+              <Award size={15} />
+              <span>Famous Buildings & Monuments ({activeState.famousPlaces.length})</span>
             </button>
             <button
               type="button"
               className={`btn btn-sm ${activeTab === 'symbols' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setActiveTab('symbols')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              Official State Symbols (Bird, Animal, Tree)
+              <Feather size={15} />
+              <span>Official State Symbols (Bird, Animal, Tree)</span>
             </button>
             <button
               type="button"
               className={`btn btn-sm ${activeTab === 'culture' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setActiveTab('culture')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              Culture, Rivers & Cuisine
+              <Globe2 size={15} />
+              <span>Culture, Rivers & Cuisine</span>
             </button>
           </div>
 
-          {/* Tab 1: Overview & Famous Places with Real Photos */}
-          {activeTab === 'overview' && (
+          {/* Tab 1: Famous Places & Buildings with REAL High-Resolution Imagery */}
+          {activeTab === 'places' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Award size={18} color="var(--accent-primary)" />
-                  Famous Places & World Heritage Sites of {activeState.name}
-                </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Award size={18} color="var(--accent-primary)" />
+                    Famous Buildings, Monuments & Heritage of {activeState.name}
+                  </h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click photo to expand</span>
+                </div>
 
                 <div
                   style={{
@@ -433,10 +490,20 @@ export const IndiaMapComponent: React.FC = () => {
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
-                        transition: 'transform 0.2s ease',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                       }}
+                      onClick={() =>
+                        setLightbox({
+                          url: place.imageUrl,
+                          title: place.name,
+                          category: place.category,
+                          description: place.description,
+                        })
+                      }
+                      title="Click to view real high-resolution photo"
                     >
-                      <div style={{ height: '150px', width: '100%', position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ height: '160px', width: '100%', position: 'relative', overflow: 'hidden' }}>
                         <img
                           src={place.imageUrl}
                           alt={place.name}
@@ -465,6 +532,22 @@ export const IndiaMapComponent: React.FC = () => {
                         >
                           {place.category}
                         </span>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '8px',
+                            right: '8px',
+                            background: 'rgba(0, 0, 0, 0.65)',
+                            padding: '4px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                          }}
+                        >
+                          <Maximize2 size={13} />
+                        </div>
                       </div>
 
                       <div style={{ padding: '0.9rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -509,9 +592,18 @@ export const IndiaMapComponent: React.FC = () => {
                     border: '1px solid rgba(56, 189, 248, 0.2)',
                     borderRadius: 'var(--radius-md)',
                     overflow: 'hidden',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setLightbox({
+                      url: activeState.symbols.bird.imageUrl,
+                      title: `Official State Bird: ${activeState.symbols.bird.name}`,
+                      category: 'State Bird (राज्य पक्षी)',
+                      description: activeState.symbols.bird.description,
+                    })
+                  }
                 >
-                  <div style={{ height: '140px', width: '100%', overflow: 'hidden' }}>
+                  <div style={{ height: '150px', width: '100%', overflow: 'hidden' }}>
                     <img
                       src={activeState.symbols.bird.imageUrl}
                       alt={activeState.symbols.bird.name}
@@ -521,7 +613,7 @@ export const IndiaMapComponent: React.FC = () => {
                   </div>
                   <div style={{ padding: '0.85rem' }}>
                     <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Official State Bird
+                      Official State Bird (राज्य पक्षी)
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>
                       {activeState.symbols.bird.name}
@@ -539,9 +631,18 @@ export const IndiaMapComponent: React.FC = () => {
                     border: '1px solid rgba(245, 158, 11, 0.2)',
                     borderRadius: 'var(--radius-md)',
                     overflow: 'hidden',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setLightbox({
+                      url: activeState.symbols.animal.imageUrl,
+                      title: `Official State Animal: ${activeState.symbols.animal.name}`,
+                      category: 'State Animal (राज्य पशु)',
+                      description: activeState.symbols.animal.description,
+                    })
+                  }
                 >
-                  <div style={{ height: '140px', width: '100%', overflow: 'hidden' }}>
+                  <div style={{ height: '150px', width: '100%', overflow: 'hidden' }}>
                     <img
                       src={activeState.symbols.animal.imageUrl}
                       alt={activeState.symbols.animal.name}
@@ -551,7 +652,7 @@ export const IndiaMapComponent: React.FC = () => {
                   </div>
                   <div style={{ padding: '0.85rem' }}>
                     <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Official State Animal
+                      Official State Animal (राज्य पशु)
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>
                       {activeState.symbols.animal.name}
@@ -569,9 +670,17 @@ export const IndiaMapComponent: React.FC = () => {
                     border: '1px solid rgba(236, 72, 153, 0.2)',
                     borderRadius: 'var(--radius-md)',
                     overflow: 'hidden',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setLightbox({
+                      url: activeState.symbols.flower.imageUrl,
+                      title: `Official State Flower: ${activeState.symbols.flower.name}`,
+                      category: 'State Flower (राज्य पुष्प)',
+                    })
+                  }
                 >
-                  <div style={{ height: '140px', width: '100%', overflow: 'hidden' }}>
+                  <div style={{ height: '150px', width: '100%', overflow: 'hidden' }}>
                     <img
                       src={activeState.symbols.flower.imageUrl}
                       alt={activeState.symbols.flower.name}
@@ -581,7 +690,7 @@ export const IndiaMapComponent: React.FC = () => {
                   </div>
                   <div style={{ padding: '0.85rem' }}>
                     <div style={{ fontSize: '0.72rem', color: '#ec4899', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Official State Flower
+                      Official State Flower (राज्य पुष्प)
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>
                       {activeState.symbols.flower.name}
@@ -596,9 +705,17 @@ export const IndiaMapComponent: React.FC = () => {
                     border: '1px solid rgba(16, 185, 129, 0.2)',
                     borderRadius: 'var(--radius-md)',
                     overflow: 'hidden',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setLightbox({
+                      url: activeState.symbols.tree.imageUrl,
+                      title: `Official State Tree: ${activeState.symbols.tree.name}`,
+                      category: 'State Tree (राज्य वृक्ष)',
+                    })
+                  }
                 >
-                  <div style={{ height: '140px', width: '100%', overflow: 'hidden' }}>
+                  <div style={{ height: '150px', width: '100%', overflow: 'hidden' }}>
                     <img
                       src={activeState.symbols.tree.imageUrl}
                       alt={activeState.symbols.tree.name}
@@ -608,7 +725,7 @@ export const IndiaMapComponent: React.FC = () => {
                   </div>
                   <div style={{ padding: '0.85rem' }}>
                     <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Official State Tree
+                      Official State Tree (राज्य वृक्ष)
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>
                       {activeState.symbols.tree.name}
@@ -711,6 +828,101 @@ export const IndiaMapComponent: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Real-time Fullscreen Image Lightbox Modal */}
+      {lightbox && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.9)',
+            backdropFilter: 'blur(16px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+          }}
+          onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{
+              position: 'relative',
+              maxWidth: '900px',
+              width: '100%',
+              background: 'rgba(15, 23, 42, 0.98)',
+              borderRadius: 'var(--radius-lg, 16px)',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              overflow: 'hidden',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setLightbox(null)}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'rgba(0, 0, 0, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                cursor: 'pointer',
+                zIndex: 10,
+              }}
+              aria-label="Close photo view"
+            >
+              <X size={20} />
+            </button>
+
+            {/* High-Resolution Image */}
+            <div style={{ maxHeight: '520px', width: '100%', overflow: 'hidden', background: '#000' }}>
+              <img
+                src={lightbox.url}
+                alt={lightbox.title}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+              />
+            </div>
+
+            {/* Photo Caption & Context */}
+            <div style={{ padding: '1.25rem' }}>
+              {lightbox.category && (
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: '#38bdf8',
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                  }}
+                >
+                  {lightbox.category}
+                </span>
+              )}
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '8px 0 4px 0', color: '#fff' }}>
+                {lightbox.title}
+              </h3>
+              {lightbox.description && (
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  {lightbox.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
