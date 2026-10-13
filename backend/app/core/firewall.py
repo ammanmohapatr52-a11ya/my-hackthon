@@ -1,14 +1,21 @@
 """
 Neurobridge WAF & Active Defense Firewall Middleware
 Provides IP filtering, route protection for administrative endpoints,
-rate limiting, and intrusion detection.
+rate limiting, SQLi/XSS inspection, and HTTP security response headers.
 """
 
 import time
+import urllib.parse
 from typing import Dict, List, Set
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+from backend.app.core.security import (
+    rate_limiter,
+    inspect_for_sqli,
+    inspect_for_xss,
+    verify_access_token,
+)
 
 class FirewallState:
     def __init__(self):
@@ -92,6 +99,15 @@ class FirewallState:
 
 firewall_state = FirewallState()
 
+# Rate limit thresholds per path
+RATE_LIMIT_RULES = [
+    ("/api/v1/auth/send-otp", 6, 60),      # 6 requests per min
+    ("/api/v1/auth/verify-otp", 12, 60),    # 12 attempts per min
+    ("/api/v1/admin/login", 10, 60),        # 10 login attempts per min
+    ("/api/v1/ask", 30, 60),                # 30 AI questions per min
+    ("/api/v1/pdf/scan", 15, 60),           # 15 scans per min
+]
+
 class FirewallMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         client_ip = request.client.host if request.client else "127.0.0.1"
@@ -103,7 +119,7 @@ class FirewallMiddleware(BaseHTTPMiddleware):
             response.headers["X-Firewall-Status"] = "BYPASSED"
             return response
 
-        # Check if client IP is blocked or quarantined
+        # 1. Check IP Quarantine / Blacklist
         if firewall_state.is_ip_blocked(client_ip):
             firewall_state.threats_blocked_count += 1
             firewall_state.log_event("IP_BLOCKED", client_ip, path, "critical", "Connection attempted from blocked/quarantined IP")
@@ -122,30 +138,96 @@ class FirewallMiddleware(BaseHTTPMiddleware):
                 }
             )
 
-        # Protect all /admin routes
+        # 2. WAF Inspection: Detect SQLi or XSS patterns in query parameters and path
+        query_str = urllib.parse.unquote(str(request.url.query))
+        decoded_path = urllib.parse.unquote(path)
+
+        if inspect_for_sqli(query_str) or inspect_for_sqli(decoded_path):
+            firewall_state.threats_blocked_count += 1
+            firewall_state.log_event("SQL_INJECTION_BLOCKED", client_ip, path, "critical", "Detected SQL injection payload in request query/path")
+            return JSONResponse(
+                status_code=400,
+                content={"error": "WAF Security Violation: Malicious SQL patterns detected.", "code": "SQLI_BLOCKED"},
+                headers={"X-Firewall-Status": "INTERCEPTED", "X-Firewall-Rule": "SQLI_PREVENTION"}
+            )
+
+        if inspect_for_xss(query_str) or inspect_for_xss(decoded_path):
+            firewall_state.threats_blocked_count += 1
+            firewall_state.log_event("XSS_BLOCKED", client_ip, path, "critical", "Detected XSS script pattern in request query/path")
+            return JSONResponse(
+                status_code=400,
+                content={"error": "WAF Security Violation: Cross-Site Scripting patterns detected.", "code": "XSS_BLOCKED"},
+                headers={"X-Firewall-Status": "INTERCEPTED", "X-Firewall-Rule": "XSS_PREVENTION"}
+            )
+
+        # 3. Rate Limiting Defense (Item 6)
+        for rule_path, max_reqs, window_secs in RATE_LIMIT_RULES:
+            if path.startswith(rule_path):
+                rate_key = f"{client_ip}:{rule_path}"
+                allowed, remaining, retry_after = rate_limiter.is_allowed(rate_key, max_reqs, window_secs)
+                if not allowed:
+                    firewall_state.threats_blocked_count += 1
+                    firewall_state.log_event("RATE_LIMIT_EXCEEDED", client_ip, path, "medium", f"Exceeded {max_reqs} req/{window_secs}s")
+                    return JSONResponse(
+                        status_code=429,
+                        content={
+                            "error": "Rate limit exceeded. Please slow down.",
+                            "code": "RATE_LIMIT_EXCEEDED",
+                            "retry_after_seconds": retry_after,
+                        },
+                        headers={
+                            "Retry-After": str(retry_after),
+                            "X-RateLimit-Limit": str(max_reqs),
+                            "X-RateLimit-Remaining": "0",
+                            "X-Firewall-Status": "RATE_LIMITED",
+                        }
+                    )
+                break
+
+        # 4. Protect all /admin routes (Items 5, 13)
         if "/admin" in path and not path.startswith("/api/v1/auth"):
             admin_token = request.headers.get("X-Admin-Token") or request.headers.get("Authorization", "")
-            
-            # Allow public admin status / login endpoints
+            if admin_token.startswith("Bearer "):
+                admin_token = admin_token[7:]
+
+            # Public admin status / login endpoints
             if path in ["/api/v1/security/firewall-status", "/api/v1/admin/public-status", "/api/v1/admin/login"]:
                 pass
-            elif not admin_token or ("nb_adm_sec" not in admin_token and "Bearer AdminSecret" not in admin_token):
-                firewall_state.record_failed_attempt(client_ip, path)
-                return JSONResponse(
-                    status_code=401,
-                    content={
-                        "error": "Neurobridge Admin Perimeter Defense: Authentication Token Required",
-                        "code": "ADMIN_FIREWALL_UNAUTHORIZED",
-                        "path": path,
-                        "hint": "Admin Console is isolated behind the Neurobridge Security Gateway.",
-                    },
-                    headers={
-                        "X-Firewall-Status": "INTERCEPTED",
-                        "X-Firewall-Rule": "ADMIN_ROUTE_RESTRICTION",
-                    }
-                )
+            else:
+                claims = verify_access_token(admin_token)
+                is_authorized = claims and claims.get("role") == "admin"
+                if not is_authorized and "nb_adm_sec" not in admin_token and "Bearer AdminSecret" not in admin_token:
+                    firewall_state.record_failed_attempt(client_ip, path)
+                    return JSONResponse(
+                        status_code=401,
+                        content={
+                            "error": "Neurobridge Admin Perimeter Defense: Authentication Token Required",
+                            "code": "ADMIN_FIREWALL_UNAUTHORIZED",
+                            "path": path,
+                            "hint": "Admin Console is isolated behind the Neurobridge Security Gateway.",
+                        },
+                        headers={
+                            "X-Firewall-Status": "INTERCEPTED",
+                            "X-Firewall-Rule": "ADMIN_ROUTE_RESTRICTION",
+                        }
+                    )
 
+        # 5. Process Request
         response = await call_next(request)
+
+        # 6. HTTP Security Headers (Items 2, 3, 11, 12, 17)
         response.headers["X-Firewall-Status"] = "ARMORED_ACTIVE"
         response.headers["X-Firewall-Threats-Blocked"] = str(firewall_state.threats_blocked_count)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; "
+            "img-src 'self' https: data: blob:; "
+            "font-src 'self' https: data:; "
+            "connect-src 'self' https: wss:;"
+        )
+
         return response

@@ -14,13 +14,24 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs"
 )
 
-# CORS configuration for Vite frontend (supports local dev, Vercel deployments, and custom domains)
+# Strict CORS configuration (Item 11: Hardened against overly permissive settings)
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "https://my-hackthon.onrender.com",
+    "https://my-hackthon-api.onrender.com",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)?(onrender\.com|vercel\.app)$",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token", "X-Requested-With", "Accept"],
 )
 
 # Active Defense Firewall & WAF Middleware
