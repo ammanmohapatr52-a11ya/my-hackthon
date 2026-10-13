@@ -143,17 +143,17 @@ export const VoiceCommandModal: React.FC<VoiceCommandModalProps> = ({
               borderRadius: 'var(--radius-md)',
               padding: '1rem',
               textAlign: 'left',
-              marginBottom: '1.5rem',
+              marginBottom: '1.25rem',
             }}
           >
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
               {t('voice_modal.recognized', 'RECOGNIZED SPEECH:')}
             </div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
               "{transcript}"
             </div>
 
-            {detectedIntent && detectedIntent.type !== 'unknown' && (
+            {detectedIntent && (
               <div
                 style={{
                   marginTop: '0.75rem',
@@ -179,35 +179,71 @@ export const VoiceCommandModal: React.FC<VoiceCommandModalProps> = ({
         ) : (
           <div
             style={{
-              padding: '1rem',
+              padding: '1.25rem',
               color: 'var(--text-muted)',
               fontSize: '0.9rem',
               fontStyle: 'italic',
+              background: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1.25rem',
             }}
           >
-            {t('voice_modal.speak_clearly', 'Speak clearly into your microphone...')}
+            {t('voice_modal.speak_clearly', 'Speak clearly into your microphone... Say "solve x^2 - 4 = 0", "ask what is gravity", or "open map"')}
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem' }}>
           {isListening ? (
             <button type="button" className="btn btn-secondary" onClick={stopListening}>
-              <MicOff size={18} /> {t('voice_modal.pause_listening', 'Pause Listening')}
+              <MicOff size={18} /> {t('voice_modal.pause_listening', 'Pause Mic')}
             </button>
           ) : (
             <button type="button" className="btn btn-primary" onClick={startListening}>
-              <Mic size={18} /> {t('voice_modal.start_listening', 'Start Listening')}
+              <Mic size={18} /> {t('voice_modal.start_listening', 'Start Mic')}
             </button>
           )}
 
-          {transcript && detectedIntent && detectedIntent.type !== 'unknown' && (
-            <button type="button" className="btn btn-primary" onClick={handleExecute}>
-              {t('voice_modal.execute', 'Execute Command')} <ArrowRight size={18} />
-            </button>
+          {transcript && (
+            <>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleExecute}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                }}
+              >
+                <span>Execute Intent</span> <ArrowRight size={16} />
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  stopListening();
+                  onClose();
+                  navigate('/solve', { state: { initialProblem: transcript } });
+                }}
+              >
+                🔢 Solve as Math
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  stopListening();
+                  onClose();
+                  navigate('/ask', { state: { initialQuestion: transcript } });
+                }}
+              >
+                ✨ Ask AI Tutor
+              </button>
+            </>
           )}
 
-          <button type="button" className="btn btn-outline" onClick={onClose}>
-            {t('voice_modal.cancel', 'Cancel')}
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            {t('voice_modal.cancel', 'Close')}
           </button>
         </div>
       </div>

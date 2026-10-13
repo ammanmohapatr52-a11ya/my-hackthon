@@ -15,6 +15,7 @@ import {
   LogOut,
   Shield,
   Globe2,
+  Compass,
   X,
   User,
 } from 'lucide-react';
@@ -45,6 +46,7 @@ export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
     { to: '/ask', label: t('nav.ask', 'Ask a Question'), icon: HelpCircle },
     { to: '/scan', label: t('nav.scan', 'PDF Scanner'), icon: FileText },
     { to: '/graph', label: t('nav.graph', 'Graph & Sound'), icon: Activity },
+    { to: '/india-map', label: t('nav.indiaMap', 'Map of India (भारत)'), icon: Compass, badge: 'NEW' },
     { to: '/flashcards', label: t('nav.flashcards', 'Flashcards'), icon: Layers },
     { to: '/voice-learning', label: t('nav.voice', 'Voice Learning'), icon: Volume2 },
     { to: '/history', label: t('nav.history', 'My History'), icon: Clock },

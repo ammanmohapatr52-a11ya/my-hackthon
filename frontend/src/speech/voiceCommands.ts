@@ -133,6 +133,33 @@ export function parseVoiceCommand(text: string): VoiceIntent {
     return { type: 'navigate', path: '/settings' };
   }
 
+  // Navigation: Map of India
+  if (
+    clean.includes('map') ||
+    clean.includes('india map') ||
+    clean.includes('map of india') ||
+    clean.includes('states') ||
+    clean.includes('नक्शा') ||
+    clean.includes('मानचित्र') ||
+    clean.includes('ମାନଚିତ୍ର')
+  ) {
+    return { type: 'navigate', path: '/india-map' };
+  }
+
+  // Navigation: Graph & Coordinates
+  if (
+    clean.includes('go to graph') ||
+    clean.includes('open graph') ||
+    clean.includes('graph and sound') ||
+    clean.includes('coordinate') ||
+    clean.includes('coordinates') ||
+    clean.includes('x and y') ||
+    clean.includes('ग्राफ') ||
+    clean.includes('ଗ୍ରାଫ')
+  ) {
+    return { type: 'navigate', path: '/graph' };
+  }
+
   // Read aloud command
   if (
     clean.includes('read this') ||
@@ -181,6 +208,20 @@ export function parseVoiceCommand(text: string): VoiceIntent {
     clean.includes('ପୁନର୍ବାର')
   ) {
     return { type: 'repeat' };
+  }
+
+  // Mathematical problem detection (contains math symbols, variables, or computation keywords)
+  const isMathProblem =
+    /[\d\+\-\*\/\=\^\(\)]/.test(clean) && (clean.includes('x') || clean.includes('=') || clean.includes('+') || clean.includes('-')) ||
+    /\b(calculate|derivative|integral|equation|slope|parabola|algebra|quadratic|fraction)\b/i.test(clean);
+
+  if (isMathProblem) {
+    return { type: 'solve', payload: text };
+  }
+
+  // Default intelligent fallback: Route any educational or knowledge question to AI Tutor
+  if (clean.length >= 3) {
+    return { type: 'ask', payload: text };
   }
 
   return { type: 'unknown', raw: text };

@@ -15,6 +15,7 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminPage } from './pages/AdminPage';
 import { NewsPage } from './pages/NewsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { IndiaMapPage } from './pages/IndiaMapPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminFirewallGuard } from './security/AdminFirewallGuard';
 import { UserAuthGuard } from './security/UserAuthGuard';
@@ -61,6 +62,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="ask" element={<AskPage />} />
         <Route path="scan" element={<PDFScannerPage />} />
         <Route path="graph" element={<GraphSoundPage />} />
+        <Route path="india-map" element={<IndiaMapPage />} />
+        <Route path="map" element={<IndiaMapPage />} />
         <Route path="flashcards" element={<FlashcardsPage />} />
         <Route path="voice-learning" element={<VoiceLearningPage />} />
         <Route path="news" element={<NewsPage />} />

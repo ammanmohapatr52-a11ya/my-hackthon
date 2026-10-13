@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Pause, Square, Activity, Table, Info, Volume2 } from 'lucide-react';
+import { Play, Pause, Square, Activity, Table, Info, Volume2, Compass, Layers } from 'lucide-react';
 import { useAnnounce } from '../accessibility/useAnnounce';
 import { useLanguage } from '../i18n/LanguageContext';
+import { CoordinateQuestionLab } from '../features/graph/CoordinateQuestionLab';
 
 export const GraphSoundPage: React.FC = () => {
   const location = useLocation();
   const { announcePolite } = useAnnounce();
   const { t } = useLanguage();
 
+  const [activeTab, setActiveTab] = useState<'coordinates' | 'function'>('coordinates');
   const [funcInput, setFuncInput] = useState('x^2 - 4');
   const [isPlayingSound, setIsPlayingSound] = useState(false);
   const [playheadX, setPlayheadX] = useState<number | null>(null);
@@ -22,6 +24,7 @@ export const GraphSoundPage: React.FC = () => {
   useEffect(() => {
     if (location.state?.initialFunction) {
       setFuncInput(location.state.initialFunction);
+      setActiveTab('function');
     }
   }, [location.state]);
 
@@ -159,16 +162,63 @@ export const GraphSoundPage: React.FC = () => {
   ];
 
   return (
-    <div>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.85rem', marginBottom: '0.25rem' }}>{t('graph.title', 'Graph & Sound (Sonification)')}</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          {t('graph.desc', '"See it, hear it" — Interactive function visualization with Web Audio tone mapping and accessible data tables.')}
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.85rem', marginBottom: '0.25rem' }}>{t('graph.title', 'Graph, Coordinates & Sound')}</h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            {t('graph.desc', '"See it, hear it, solve it" — Dynamic Cartesian coordinate lab with auto-updating math questions & pitch sonification.')}
+          </p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div
+          style={{
+            display: 'inline-flex',
+            background: 'var(--bg-elevated)',
+            padding: '4px',
+            borderRadius: 'var(--radius-lg, 12px)',
+            border: '1px solid var(--border-medium)',
+            gap: '4px',
+          }}
+          role="tablist"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'coordinates'}
+            className={`btn btn-sm ${activeTab === 'coordinates' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => {
+              stopAudio();
+              setActiveTab('coordinates');
+            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 14px' }}
+          >
+            <Compass size={16} />
+            <span>(X, Y) Coordinates & Question Lab</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'function'}
+            className={`btn btn-sm ${activeTab === 'function' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setActiveTab('function')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 14px' }}
+          >
+            <Activity size={16} />
+            <span>Function Plotter y = f(x) & Pitch</span>
+          </button>
+        </div>
       </div>
 
-      {/* Function Input Strip */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+      {/* Tab 1: Real-time Coordinate & Auto Question Lab */}
+      {activeTab === 'coordinates' && <CoordinateQuestionLab />}
+
+      {/* Tab 2: Function Plotter & Sonification */}
+      {activeTab === 'function' && (
+        <div>
+          {/* Function Input Strip */}
+          <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <label htmlFor="function-input" style={{ fontWeight: 600 }}>
             {t('graph.input_label', 'Enter Function y = f(x):')}
@@ -387,6 +437,8 @@ export const GraphSoundPage: React.FC = () => {
           </div>
         )}
       </div>
+        </div>
+      )}
     </div>
   );
 };

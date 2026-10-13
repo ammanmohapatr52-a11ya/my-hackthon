@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calculator, HelpCircle, Activity, Layers, Volume2, ArrowRight, FileText, Globe2 } from 'lucide-react';
+import { Calculator, HelpCircle, Activity, Layers, Volume2, ArrowRight, FileText, Globe2, Compass } from 'lucide-react';
 
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -43,11 +43,19 @@ export const QuickActions: React.FC = () => {
     },
     {
       title: t('graph.title', 'Graph and Sound'),
-      desc: t('home.action_graph_desc', 'Interactive mathematical function plotter with Web Audio sonification tone mapping.'),
+      desc: t('home.action_graph_desc', 'Interactive Cartesian coordinate lab, dynamic geometry question generator, and Web Audio function sonifier.'),
       path: '/graph',
       icon: Activity,
       color: '#10B981',
-      tag: t('graph.btn_play', 'Audio Sonification'),
+      tag: 'X-Y Coordinates & Audio',
+    },
+    {
+      title: t('indiaMap.title', 'Map of India (भारत का मानचित्र)'),
+      desc: t('indiaMap.desc', 'Interactive state explorer: State birds, animals, flowers, UNESCO heritage places with authentic real photographs, culture & audio narration.'),
+      path: '/india-map',
+      icon: Compass,
+      color: '#F59E0B',
+      tag: 'CULTURE & GEOGRAPHY',
     },
     {
       title: t('cards.title', 'Flashcards'),

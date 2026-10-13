@@ -17,64 +17,84 @@ export function useSpeechInput() {
   const [error, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
+  const isListeningRef = useRef(false);
 
   useEffect(() => {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRec) {
-      setIsSupported(true);
-      const rec = new SpeechRec();
-      rec.continuous = false;
-      rec.interimResults = true;
-      rec.lang = activeLocale || 'en-IN'; // Dynamic speech locale based on language selector
-
-      rec.onresult = (event: any) => {
-        let currentText = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          currentText += event.results[i][0].transcript;
-        }
-        setTranscript(currentText);
-      };
-
-      rec.onerror = (event: any) => {
-        if (event.error !== 'no-speech') {
-          setError(event.error);
-        }
-        setIsListening(false);
-      };
-
-      rec.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = rec;
-    } else {
-      setIsSupported(false);
-    }
-
+    setIsSupported(Boolean(SpeechRec));
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try {
+          recognitionRef.current.abort();
+        } catch {}
       }
     };
   }, []);
 
-  // Sync recognition locale immediately when user switches language
-  useEffect(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = activeLocale || 'en-IN';
-    }
-  }, [activeLocale]);
-
   const startListening = useCallback(() => {
-    if (!recognitionRef.current) return;
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setError('Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.');
+      setIsSupported(false);
+      return;
+    }
+
+    // Abort previous instance if any
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+    }
+
+    const rec = new SpeechRec();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = activeLocale || 'en-IN';
+
+    rec.onstart = () => {
+      setIsListening(true);
+      isListeningRef.current = true;
+      setError(null);
+    };
+
+    rec.onresult = (event: any) => {
+      let fullTranscript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        fullTranscript += event.results[i][0].transcript + ' ';
+      }
+      setTranscript(fullTranscript.trim());
+    };
+
+    rec.onerror = (event: any) => {
+      if (event.error === 'no-speech') {
+        // Normal silence, keep listening
+        return;
+      }
+      console.warn('SpeechRecognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        setError('Microphone permission denied. Please allow microphone access in your browser settings.');
+      } else {
+        setError(`Microphone: ${event.error}`);
+      }
+      setIsListening(false);
+      isListeningRef.current = false;
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+      isListeningRef.current = false;
+    };
+
+    recognitionRef.current = rec;
     setError(null);
     setTranscript('');
-    recognitionRef.current.lang = activeLocale || 'en-IN';
+
     try {
-      recognitionRef.current.start();
-      setIsListening(true);
-    } catch (e) {
-      console.warn('Recognition start error:', e);
+      rec.start();
+    } catch (e: any) {
+      console.warn('Recognition start exception:', e);
+      setIsListening(false);
+      isListeningRef.current = false;
     }
   }, [activeLocale]);
 
@@ -82,10 +102,9 @@ export function useSpeechInput() {
     if (!recognitionRef.current) return;
     try {
       recognitionRef.current.stop();
-      setIsListening(false);
-    } catch (e) {
-      console.warn('Recognition stop error:', e);
-    }
+    } catch {}
+    setIsListening(false);
+    isListeningRef.current = false;
   }, []);
 
   return {

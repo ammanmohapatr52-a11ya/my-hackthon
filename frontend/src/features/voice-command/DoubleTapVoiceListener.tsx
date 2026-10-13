@@ -90,15 +90,6 @@ export const DoubleTapVoiceListener: React.FC = () => {
     hudTimerRef.current = setTimeout(() => {
       setHudToast(null);
     }, 3500);
-
-    // 6. Vocal feedback chime
-    const wakeSpoken =
-      language === 'hi'
-        ? 'सर, आवाज़ से बोलिए।'
-        : language === 'or'
-        ? 'ସାର୍, କୁହନ୍ତୁ କଣ ସାହାଯ୍ୟ କରିବି।'
-        : 'Voice access unlocked, Sir. Listening.';
-    assistantVoice.speak(wakeSpoken, false, language);
   }, [language, playWakeChime]);
 
   // Global Double-Tap & Double-Click Gesture Detector
