@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv, set_key
+from backend.app.core.smtp_credentials import SMTP_ACTIVE_CONFIG
 
 class EmailService:
     def __init__(self):
@@ -35,13 +36,13 @@ class EmailService:
         else:
             load_dotenv(override=True)
             
-        self.host: str = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
-        self.port: int = int(os.getenv("SMTP_PORT", "587").strip() or 587)
-        self.user: str = os.getenv("SMTP_USER", "").strip()
-        raw_pass = os.getenv("SMTP_PASSWORD", "")
-        self.password: str = raw_pass.strip().replace(" ", "").replace('"', '').replace("'", "")
-        self.from_name: str = os.getenv("SMTP_FROM_NAME", "Neurobridge Stark Academy").strip()
-        self.from_email: str = os.getenv("SMTP_FROM_EMAIL", self.user).strip() or self.user
+        self.host: str = (os.getenv("SMTP_HOST") or SMTP_ACTIVE_CONFIG["host"]).strip()
+        self.port: int = int(os.getenv("SMTP_PORT") or SMTP_ACTIVE_CONFIG["port"])
+        self.user: str = (os.getenv("SMTP_USER") or SMTP_ACTIVE_CONFIG["user"]).strip()
+        raw_pass = os.getenv("SMTP_PASSWORD") or SMTP_ACTIVE_CONFIG["password"]
+        self.password: str = str(raw_pass).strip().replace(" ", "").replace('"', '').replace("'", "")
+        self.from_name: str = (os.getenv("SMTP_FROM_NAME") or SMTP_ACTIVE_CONFIG["from_name"]).strip()
+        self.from_email: str = (os.getenv("SMTP_FROM_EMAIL") or self.user).strip() or self.user
 
     def is_configured(self) -> bool:
         return bool(self.user and self.password)
