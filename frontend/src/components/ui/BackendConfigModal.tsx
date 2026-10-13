@@ -223,7 +223,7 @@ export const BackendConfigModal: React.FC<BackendConfigModalProps> = ({
               type="text"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://your-service-name.onrender.com"
+              placeholder="https://my-hackthon-api.onrender.com"
               style={{
                 flex: 1,
                 height: '42px',

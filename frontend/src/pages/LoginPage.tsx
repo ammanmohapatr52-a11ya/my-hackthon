@@ -183,12 +183,6 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
-      if (!isLocalhost() && !isBackendConfigured()) {
-        setIsBackendModalOpen(true);
-        setError('Please connect your Render backend URL so the server can dispatch the live OTP to your Gmail.');
-        return;
-      }
-
       setIsLoading(true);
       const otpRes = await sendRegistrationOtp({
         email: regEmail,
@@ -223,12 +217,6 @@ export const LoginPage: React.FC = () => {
       const loginEmail = (email || username).trim().toLowerCase();
       if (!loginEmail || !loginEmail.includes('@')) {
         setError('Please enter a valid Gmail / Email address to receive your login code');
-        return;
-      }
-
-      if (!isLocalhost() && !isBackendConfigured()) {
-        setIsBackendModalOpen(true);
-        setError('Please connect your Render backend URL so the server can dispatch the live OTP to your Gmail.');
         return;
       }
 
@@ -409,12 +397,6 @@ export const LoginPage: React.FC = () => {
       setDemoError(
         `❌ This Gmail address (${clean}) has already consumed its one-time demo access. The demo can only be used once per Gmail. Please use a different Gmail address to test the demo.`
       );
-      return;
-    }
-
-    if (!isLocalhost() && !isBackendConfigured()) {
-      setIsBackendModalOpen(true);
-      setDemoError('Please connect your Render backend URL so the 1-minute demo passcode can be dispatched.');
       return;
     }
 

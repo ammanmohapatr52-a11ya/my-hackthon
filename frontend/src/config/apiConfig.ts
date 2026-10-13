@@ -9,6 +9,8 @@
 
 export const STORAGE_KEY_BACKEND_URL = 'neurobridge_backend_url';
 
+export const DEFAULT_RENDER_BACKEND = 'https://my-hackthon-api.onrender.com';
+
 export const isLocalhost = (): boolean => {
   if (typeof window === 'undefined') return true;
   const host = window.location.hostname;
@@ -41,7 +43,7 @@ export const getBackendBaseUrl = (): string => {
     return 'http://127.0.0.1:8000';
   }
 
-  // 3. Runtime override saved in localStorage for production / custom deployments
+  // 3. Runtime override saved in localStorage for custom deployments
   try {
     if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem(STORAGE_KEY_BACKEND_URL);
@@ -53,13 +55,8 @@ export const getBackendBaseUrl = (): string => {
     // ignore storage access errors
   }
 
-  // 4. If running directly on the backend web service domain
-  if (typeof window !== 'undefined' && window.location.hostname === 'my-hackthon-api.onrender.com') {
-    return ''; // Same-origin relative URLs (/api/v1/...)
-  }
-
-  // 5. Production backend on Render (used by static site my-hackthon.onrender.com & Vercel):
-  return 'https://my-hackthon-api.onrender.com';
+  // 4. Built-in Production backend on Render (used by all devices, static site, and direct access):
+  return DEFAULT_RENDER_BACKEND;
 };
 
 export const setBackendBaseUrl = (url: string): void => {
@@ -76,14 +73,20 @@ export const setBackendBaseUrl = (url: string): void => {
 };
 
 export const isBackendConfigured = (): boolean => {
-  const url = getBackendBaseUrl();
-  return Boolean(url && url.length > 0);
+  return true;
 };
 
 export const getApiUrl = (path: string): string => {
   const base = getBackendBaseUrl();
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   if (!base) {
+    return cleanPath;
+  }
+  // When running directly on the backend service, relative URLs are fast & avoid CORS hops
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.origin === base || window.location.hostname === 'my-hackthon-api.onrender.com')
+  ) {
     return cleanPath;
   }
   return `${base}${cleanPath}`;
