@@ -548,77 +548,6 @@ export const LoginPage: React.FC = () => {
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          {/* Direct Gmail SMTP Dispatcher Config Button */}
-          <button
-            type="button"
-            id="login-smtp-config-button"
-            onClick={() => {
-              setSmtpModalOpen(true);
-              setSmtpModalMsg(null);
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              background: smtpStatus?.configured ? 'rgba(34, 197, 94, 0.12)' : 'rgba(245, 158, 11, 0.15)',
-              border: `1px solid ${smtpStatus?.configured ? 'rgba(34, 197, 94, 0.4)' : 'rgba(245, 158, 11, 0.45)'}`,
-              color: smtpStatus?.configured ? '#86efac' : '#fbbf24',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              padding: '0.35rem 0.8rem',
-              borderRadius: '9999px',
-              cursor: 'pointer',
-              backdropFilter: 'blur(8px)',
-              transition: 'all 0.2s ease',
-            }}
-            title="Configure Gmail SMTP to send OTP directly to user Gmail inboxes"
-          >
-            <Mail size={13} />
-            <span>{smtpStatus?.configured ? 'Gmail SMTP Active' : 'Connect Gmail SMTP'}</span>
-            <span
-              style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                backgroundColor: smtpStatus?.configured ? '#22c55e' : '#f59e0b',
-                boxShadow: `0 0 6px ${smtpStatus?.configured ? '#22c55e' : '#f59e0b'}`,
-              }}
-            />
-          </button>
-
-          {/* Decoupled Protected Admin Security Gateway Link */}
-          <Link
-            to="/admin-login"
-            id="login-go-to-admin-gateway"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              color: '#38bdf8',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              textDecoration: 'none',
-              padding: '0.35rem 0.75rem',
-              borderRadius: '9999px',
-              backgroundColor: 'rgba(2, 132, 199, 0.12)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              backdropFilter: 'blur(8px)',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(2, 132, 199, 0.25)';
-              e.currentTarget.style.boxShadow = '0 0 10px rgba(56, 189, 248, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(2, 132, 199, 0.12)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-            title="Open Isolated Administrator Security Gateway"
-          >
-            <Shield size={14} />
-            <span>Admin Gateway</span>
-          </Link>
-
           {/* Quick Demo Autofill button */}
           <button
             type="button"
@@ -1308,31 +1237,6 @@ export const LoginPage: React.FC = () => {
                     <span>⚡ Instant Student Access (1-Click Demo)</span>
                   </button>
 
-                  <button
-                    type="button"
-                    id="login-guest-btn"
-                    onClick={handleGuestLogin}
-                    disabled={isLoading}
-                    style={{
-                      width: '100%',
-                      padding: '7px 12px',
-                      borderRadius: '10px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      color: '#cbd5e1',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: isLoading ? 'wait' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      transition: 'all 0.18s ease',
-                    }}
-                  >
-                    <User size={13} />
-                    <span>Continue as Guest Learner</span>
-                  </button>
 
                   <div
                     style={{
@@ -1739,91 +1643,7 @@ export const LoginPage: React.FC = () => {
                 gap: '0.55rem',
               }}
             >
-              <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>log in with</span>
 
-              {/* Social Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <button
-                  type="button"
-                  onClick={() => handleSocialLogin('Facebook')}
-                  aria-label="Log in with Facebook"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    backgroundColor: '#1877f2',
-                    borderRadius: '4px',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontWeight: 800,
-                    fontSize: '1rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  f
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSocialLogin('X')}
-                  aria-label="Log in with X"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    backgroundColor: '#000000',
-                    border: '1px solid #334155',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  𝕏
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSocialLogin('Google')}
-                  aria-label="Log in with Google"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    backgroundColor: '#ffffff',
-                    borderRadius: '4px',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    padding: '4px',
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.9c2.28-2.1 3.645-5.2 3.645-9.15z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.9-3.05c-1.08.72-2.45 1.16-4.03 1.16-3.1 0-5.73-2.1-6.67-4.93H1.28v3.13C3.26 21.3 7.34 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.33 14.27c-.24-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.6H1.28C.46 8.23 0 10.06 0 12s.46 3.77 1.28 5.4l4.05-3.13z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.7 1.28 6.6l4.05 3.13c.94-2.83 3.57-4.98 6.67-4.98z"
-                    />
-                  </svg>
-                </button>
-              </div>
 
               {/* Sign Up / Login Toggle */}
               <button
