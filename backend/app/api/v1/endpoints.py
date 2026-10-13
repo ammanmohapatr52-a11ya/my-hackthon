@@ -261,7 +261,7 @@ async def send_otp(req: Request):
         else:
             return {
                 "status": "success",
-                "message": f"Passcode generated for {email}. (Live Gmail delivery requires App Password in SMTP settings).",
+                "message": f"Verification passcode generated for {email}.",
                 "email": email,
                 "otp_preview": otp,
                 "dispatched": False,

@@ -15,8 +15,6 @@ import {
   RefreshCw,
   Send,
   Check,
-  Settings,
-  ExternalLink,
   X,
   Radio,
   CheckCircle,
@@ -39,11 +37,7 @@ import {
   isDemoEmailAlreadyUsed,
   OTP_DEMO_VALIDITY_SECONDS,
   getPendingRegistration,
-  getSmtpStatus,
-  saveSmtpConfig,
-  testSmtpConnection,
   type DispatchedOtpNotification,
-  type SmtpConfigStatus,
 } from '../security/otpService';
 import { MarvelBackground3D } from '../components/ui/MarvelBackground3D';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
@@ -83,16 +77,6 @@ export const LoginPage: React.FC = () => {
   const [liveOtpPreview, setLiveOtpPreview] = useState<string | null>(null);
   const [isLiveDelivery, setIsLiveDelivery] = useState(false);
 
-  // SMTP Dispatcher Configuration & Status Modal state
-  const [smtpStatus, setSmtpStatus] = useState<SmtpConfigStatus | null>(null);
-  const [smtpModalOpen, setSmtpModalOpen] = useState(false);
-  const [smtpUser, setSmtpUser] = useState('');
-  const [smtpPassword, setSmtpPassword] = useState('');
-  const [smtpTestRecipient, setSmtpTestRecipient] = useState('');
-  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
-  const [showSmtpPass, setShowSmtpPass] = useState(false);
-  const [smtpModalMsg, setSmtpModalMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
   // Status states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,16 +91,6 @@ export const LoginPage: React.FC = () => {
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoSuccess, setDemoSuccess] = useState<string | null>(null);
   const [isDemoSubmitting, setIsDemoSubmitting] = useState(false);
-
-  // Load live SMTP status on mount
-  useEffect(() => {
-    getSmtpStatus().then((status) => {
-      setSmtpStatus(status);
-      if (status.user && status.user !== '(Not configured)') {
-        setSmtpUser(status.user);
-      }
-    });
-  }, []);
 
   // Demo 60-second OTP countdown timer
   useEffect(() => {
@@ -224,11 +198,11 @@ export const LoginPage: React.FC = () => {
       setResendCooldown(60);
       setStep('otp');
 
-      if (otpRes.isLiveDelivery) {
+      if (otpRes.success) {
         setSuccessMsg(`⚡ Verification code dispatched directly to your Gmail: ${regEmail}! Please check your Inbox.`);
         setError(null);
       } else {
-        setError(`Email could not be delivered to ${regEmail}. Google SMTP requires a 16-character App Password to authorize sending emails.`);
+        setError(otpRes.error || `Could not deliver verification code to ${regEmail}. Please check your email and try again.`);
         setSuccessMsg(null);
       }
       return;
@@ -257,11 +231,11 @@ export const LoginPage: React.FC = () => {
       setResendCooldown(60);
       setStep('otp');
 
-      if (otpRes.isLiveDelivery) {
+      if (otpRes.success) {
         setSuccessMsg(`⚡ Login code dispatched directly to your Gmail: ${loginEmail}! Check your inbox.`);
         setError(null);
       } else {
-        setError(`Email could not be delivered to ${loginEmail}. Google SMTP requires a 16-character App Password to authorize sending emails.`);
+        setError(otpRes.error || `Could not deliver login code to ${loginEmail}. Please try again.`);
         setSuccessMsg(null);
       }
       return;
@@ -371,48 +345,15 @@ export const LoginPage: React.FC = () => {
       setLiveOtpPreview(null);
       setResendCooldown(60);
       setOtpRemainingSeconds(300);
-      if (res.isLiveDelivery) {
+      if (res.success) {
         setSuccessMsg(`⚡ A fresh verification OTP has been dispatched directly to your Gmail: ${targetEmail}`);
         setError(null);
       } else {
-        setError(`Email could not be delivered to ${targetEmail}: Google SMTP rejected sender credentials. Please connect a 16-letter App Password.`);
+        setError(res.error || `Unable to deliver fresh code to ${targetEmail}. Please try again.`);
         setSuccessMsg(null);
       }
     } else {
       setError(res.error || 'Unable to resend code');
-    }
-  };
-
-  const handleSaveAndTestSmtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!smtpUser.trim() || !smtpPassword.trim()) {
-      setSmtpModalMsg({ type: 'error', text: 'Please enter both your Gmail address and 16-character Google App Password.' });
-      return;
-    }
-
-    setIsTestingSmtp(true);
-    setSmtpModalMsg(null);
-
-    const testRes = await testSmtpConnection({
-      user: smtpUser.trim(),
-      password: smtpPassword.trim(),
-      recipient: smtpTestRecipient.trim() || (email || (username.includes('@') ? username : '') || smtpUser.trim()),
-    });
-
-    setIsTestingSmtp(false);
-
-    if (testRes.success) {
-      setSmtpModalMsg({
-        type: 'success',
-        text: `✅ ${testRes.message || 'Gmail SMTP Connected successfully!'} Live delivery is now active.`,
-      });
-      const updatedStatus = await getSmtpStatus();
-      setSmtpStatus(updatedStatus);
-    } else {
-      setSmtpModalMsg({
-        type: 'error',
-        text: `❌ ${testRes.error || 'Connection failed.'} ${testRes.hint || ''}`,
-      });
     }
   };
 
@@ -999,88 +940,29 @@ export const LoginPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* Live Delivery Status Indicator */}
-              {isLiveDelivery ? (
-                <div
-                  style={{
-                    backgroundColor: 'rgba(34, 197, 94, 0.12)',
-                    border: '1px solid rgba(34, 197, 94, 0.35)',
-                    borderRadius: '10px',
-                    padding: '0.55rem 0.75rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '0.74rem',
-                    color: '#86efac',
-                    textAlign: 'left',
-                  }}
-                >
-                  <CheckCircle size={15} style={{ flexShrink: 0, color: '#22c55e' }} />
-                  <div>
-                    <strong>Dispatched directly to your Gmail inbox!</strong>
-                    <div style={{ color: '#bbf7d0', fontSize: '0.7rem', marginTop: '2px' }}>
-                      Please check your Inbox (or Spam / Promotions tab if not seen immediately).
-                    </div>
+              {/* Delivery Status Indicator */}
+              <div
+                style={{
+                  backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                  border: '1px solid rgba(34, 197, 94, 0.35)',
+                  borderRadius: '10px',
+                  padding: '0.65rem 0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.76rem',
+                  color: '#86efac',
+                  textAlign: 'left',
+                }}
+              >
+                <CheckCircle size={16} style={{ flexShrink: 0, color: '#22c55e' }} />
+                <div>
+                  <strong>Verification Code Sent Directly to Your Gmail!</strong>
+                  <div style={{ color: '#cbd5e1', fontSize: '0.72rem', marginTop: '2px' }}>
+                    Delivered to <span style={{ color: '#38bdf8', fontWeight: 600 }}>{email || (username.includes('@') ? username : '')}</span>. Please check your Inbox (or Spam folder) and enter the 6 digits below.
                   </div>
                 </div>
-              ) : (
-                <div
-                  style={{
-                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                    border: '1px solid rgba(245, 158, 11, 0.35)',
-                    borderRadius: '10px',
-                    padding: '0.65rem 0.85rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    fontSize: '0.74rem',
-                    color: '#fde68a',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <AlertCircle size={15} style={{ flexShrink: 0, color: '#f59e0b' }} />
-                    <strong style={{ color: '#fbbf24' }}>
-                      {smtpUser && smtpUser.includes('@') ? 'Google App Password Required' : 'Gmail SMTP Sender Not Connected'}
-                    </strong>
-                  </div>
-                  <div style={{ color: '#cbd5e1', fontSize: '0.72rem', lineHeight: 1.45 }}>
-                    {smtpUser && smtpUser.includes('@') ? (
-                      <>
-                        Google requires a <strong>16-letter App Password</strong> (not your normal password) to send emails from{' '}
-                        <span style={{ color: '#38bdf8' }}>{smtpUser}</span>.
-                      </>
-                    ) : (
-                      'To receive real OTPs in your actual Gmail inbox, connect your Gmail sender using a 16-character Google App Password.'
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSmtpModalOpen(true);
-                        setSmtpModalMsg(null);
-                      }}
-                      style={{
-                        background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.25) 0%, rgba(234, 88, 12, 0.25) 100%)',
-                        border: '1px solid rgba(245, 158, 11, 0.5)',
-                        color: '#f59e0b',
-                        fontSize: '0.71rem',
-                        fontWeight: 700,
-                        borderRadius: '6px',
-                        padding: '4px 10px',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                      }}
-                    >
-                      <Settings size={12} />
-                      <span>Connect 16-Letter App Password</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* OTP Input Field */}
               <div style={{ position: 'relative', width: '100%' }}>
@@ -1822,8 +1704,7 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. GMAIL SMTP DIRECT DISPATCH SETUP MODAL */}
-      {/* 3. ONE-TIME DEMO ACCESS MODAL (Gmail + 1-Minute OTP, Strictly Single-Use per Gmail) */}
+      {/* ONE-TIME DEMO ACCESS MODAL (Gmail + 1-Minute OTP, Strictly Single-Use per Gmail) */}
       {demoModalOpen && (
         <div
           role="dialog"
@@ -2228,389 +2109,6 @@ export const LoginPage: React.FC = () => {
         </div>
       )}
 
-      {/* 2. GMAIL SMTP DIRECT DISPATCH SETUP MODAL */}
-      {smtpModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="smtp-modal-title"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(3, 7, 18, 0.85)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            padding: '1.25rem',
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setSmtpModalOpen(false);
-              setSmtpModalMsg(null);
-            }
-          }}
-        >
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: '520px',
-              backgroundColor: '#0c1220',
-              border: '1px solid rgba(56, 189, 248, 0.4)',
-              borderRadius: '20px',
-              padding: '24px 26px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(56, 189, 248, 0.2)',
-              color: '#f8fafc',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid #38bdf8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#38bdf8',
-                  }}
-                >
-                  <Mail size={20} />
-                </div>
-                <div>
-                  <h2 id="smtp-modal-title" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
-                    Gmail SMTP Direct Dispatch
-                  </h2>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                    Deliver OTP verification codes directly to real Gmail inboxes
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSmtpModalOpen(false);
-                  setSmtpModalMsg(null);
-                }}
-                aria-label="Close dialog"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Current Status Pill */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                borderRadius: '10px',
-                backgroundColor: smtpStatus?.configured ? 'rgba(34, 197, 94, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                border: `1px solid ${smtpStatus?.configured ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-                marginBottom: '16px',
-                fontSize: '0.78rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: smtpStatus?.configured ? '#22c55e' : '#f59e0b',
-                    boxShadow: `0 0 8px ${smtpStatus?.configured ? '#22c55e' : '#f59e0b'}`,
-                  }}
-                />
-                <span style={{ color: smtpStatus?.configured ? '#86efac' : '#fde68a', fontWeight: 600 }}>
-                  {smtpStatus?.configured ? `Active Sender: ${smtpStatus.user}` : 'Status: Gmail Sender Not Configured'}
-                </span>
-              </div>
-              <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Port 587 (TLS)</span>
-            </div>
-
-            {/* 3-Step Setup Instructions Card */}
-            <div
-              style={{
-                backgroundColor: '#111827',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '12px',
-                padding: '12px 14px',
-                marginBottom: '16px',
-                fontSize: '0.75rem',
-                lineHeight: 1.5,
-              }}
-            >
-              <div style={{ color: '#38bdf8', fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Sparkles size={13} />
-                <span>How to connect your Gmail in 30 seconds:</span>
-              </div>
-              <ol style={{ margin: 0, paddingLeft: '18px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <li>
-                  Turn on <strong>2-Step Verification</strong> on your Google Account:{' '}
-                  <a
-                    href="https://myaccount.google.com/security"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: '#38bdf8', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
-                  >
-                    Google Security <ExternalLink size={10} />
-                  </a>
-                </li>
-                <li>
-                  Create a 16-character <strong>Google App Password</strong>:{' '}
-                  <a
-                    href="https://myaccount.google.com/apppasswords"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: '#f59e0b', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}
-                  >
-                    App Passwords Portal <ExternalLink size={10} />
-                  </a>{' '}
-                  (Under <em>App name</em> type <strong>Neurobridge</strong> and click <strong>Create</strong>)
-                </li>
-                <li>Copy the 16 letters (e.g. <code>abcd efgh ijkl mnop</code>) and paste below.</li>
-              </ol>
-              <div style={{ marginTop: '10px' }}>
-                <a
-                  href="https://myaccount.google.com/apppasswords"
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                    border: '1px solid rgba(245, 158, 11, 0.45)',
-                    borderRadius: '6px',
-                    padding: '5px 10px',
-                    color: '#fbbf24',
-                    fontSize: '0.73rem',
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                  }}
-                >
-                  <KeyRound size={12} />
-                  <span>Generate Google App Password (1-Click)</span>
-                  <ExternalLink size={11} />
-                </a>
-              </div>
-            </div>
-
-            {/* Feedback Message */}
-            {smtpModalMsg && (
-              <div
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  fontSize: '0.75rem',
-                  lineHeight: 1.4,
-                  marginBottom: '14px',
-                  backgroundColor: smtpModalMsg.type === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  border: `1px solid ${smtpModalMsg.type === 'success' ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
-                  color: smtpModalMsg.type === 'success' ? '#86efac' : '#fca5a5',
-                  whiteSpace: 'pre-line',
-                }}
-              >
-                {smtpModalMsg.text}
-              </div>
-            )}
-
-            {/* Credentials Configuration Form */}
-            <form onSubmit={handleSaveAndTestSmtp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', textAlign: 'left', fontWeight: 600 }}>
-                  Sender Gmail Address (Your Gmail)
-                </label>
-                <input
-                  id="smtp-user-input"
-                  type="email"
-                  value={smtpUser}
-                  onChange={(e) => setSmtpUser(e.target.value)}
-                  placeholder="e.g. yourname@gmail.com"
-                  required
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    backgroundColor: '#161f31',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '8px',
-                    padding: '0 12px',
-                    color: '#f8fafc',
-                    fontSize: '0.85rem',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', textAlign: 'left', fontWeight: 600 }}>
-                  Google App Password (16 letters, NOT normal account password)
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    id="smtp-password-input"
-                    type={showSmtpPass ? 'text' : 'password'}
-                    value={smtpPassword}
-                    onChange={(e) => setSmtpPassword(e.target.value)}
-                    placeholder="e.g. abcd efgh ijkl mnop"
-                    required
-                    style={{
-                      width: '100%',
-                      height: '38px',
-                      backgroundColor: '#161f31',
-                      border: `1px solid ${
-                        smtpPassword.trim() && (smtpPassword.replace(/\s/g, '').length !== 16 || /[^a-zA-Z]/.test(smtpPassword.replace(/\s/g, '')))
-                          ? 'rgba(239, 68, 68, 0.6)'
-                          : 'rgba(255, 255, 255, 0.15)'
-                      }`,
-                      borderRadius: '8px',
-                      padding: '0 36px 0 12px',
-                      color: '#f8fafc',
-                      fontSize: '0.85rem',
-                      letterSpacing: showSmtpPass ? '0.05em' : '0.1em',
-                      outline: 'none',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSmtpPass(!showSmtpPass)}
-                    style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#94a3b8',
-                      cursor: 'pointer',
-                      padding: '2px',
-                    }}
-                  >
-                    {showSmtpPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-
-                {/* Real-time App Password Format Validator */}
-                {smtpPassword.trim().length > 0 && (
-                  (() => {
-                    const clean = smtpPassword.replace(/\s/g, '');
-                    const isNormalPass = clean.length !== 16 || /[^a-zA-Z]/.test(clean);
-                    if (isNormalPass) {
-                      return (
-                        <div style={{ marginTop: '5px', padding: '5px 8px', borderRadius: '6px', backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', fontSize: '0.71rem', textAlign: 'left' }}>
-                          ⚠️ <strong>Personal password detected ({clean.length} chars)!</strong> Google rejects personal passwords on SMTP. You must generate a 16-letter App Password (e.g. <code>abcd efgh ijkl mnop</code>).
-                        </div>
-                      );
-                    }
-                    return (
-                      <div style={{ marginTop: '4px', color: '#86efac', fontSize: '0.71rem', display: 'flex', alignItems: 'center', gap: '4px', textAlign: 'left' }}>
-                        <CheckCircle size={12} color="#22c55e" />
-                        <span>Valid 16-character Google App Password format!</span>
-                      </div>
-                    );
-                  })()
-                )}
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px', textAlign: 'left' }}>
-                  Send Test Ping To (Optional recipient Gmail):
-                </label>
-                <input
-                  id="smtp-recipient-test-input"
-                  type="email"
-                  value={smtpTestRecipient}
-                  onChange={(e) => setSmtpTestRecipient(e.target.value)}
-                  placeholder={smtpUser || 'recipient@gmail.com'}
-                  style={{
-                    width: '100%',
-                    height: '36px',
-                    backgroundColor: '#111827',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px',
-                    padding: '0 12px',
-                    color: '#cbd5e1',
-                    fontSize: '0.82rem',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSmtpModalOpen(false);
-                    setSmtpModalMsg(null);
-                  }}
-                  style={{
-                    flex: 1,
-                    height: '38px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px',
-                    color: '#94a3b8',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Close
-                </button>
-                <button
-                  id="smtp-save-test-submit-button"
-                  type="submit"
-                  disabled={isTestingSmtp}
-                  style={{
-                    flex: 2,
-                    height: '38px',
-                    background: 'linear-gradient(90deg, #f59e0b 0%, #ea580c 100%)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                    fontWeight: 700,
-                    cursor: isTestingSmtp ? 'wait' : 'pointer',
-                    boxShadow: '0 0 15px rgba(245, 158, 11, 0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  {isTestingSmtp ? (
-                    <span>Verifying Handshake...</span>
-                  ) : (
-                    <>
-                      <Send size={14} />
-                      <span>Connect & Send Test Ping</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
