@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { getCurrentAuthUser } from '../services/userService';
+import { getCurrentAuthUser, getValidatedSessionUser } from '../services/userService';
 
 interface UserAuthGuardProps {
   children: React.ReactNode;
@@ -13,11 +13,11 @@ interface UserAuthGuardProps {
  */
 export const UserAuthGuard: React.FC<UserAuthGuardProps> = ({ children }) => {
   const location = useLocation();
-  const [currentUser, setCurrentUser] = useState(() => getCurrentAuthUser());
+  const [currentUser, setCurrentUser] = useState(() => getValidatedSessionUser());
 
   useEffect(() => {
     const checkAuth = () => {
-      setCurrentUser(getCurrentAuthUser());
+      setCurrentUser(getValidatedSessionUser());
     };
 
     window.addEventListener('neurobridge_auth_changed', checkAuth);

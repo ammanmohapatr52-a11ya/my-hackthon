@@ -379,6 +379,7 @@ export const verifyLoginOtpAndAuthenticate = (
     usernameOrEmail: pending.email,
     isSignUp: false,
     provider: 'Gmail OTP Direct',
+    isOtpVerified: true,
   });
 
   if (!authResult.success) {
@@ -387,6 +388,7 @@ export const verifyLoginOtpAndAuthenticate = (
       usernameOrEmail: pending.email,
       isSignUp: true,
       provider: 'Gmail OTP Direct',
+      isOtpVerified: true,
     });
     if (!newReg.success) {
       return { success: false, error: newReg.error || 'Failed to authenticate user session' };
@@ -570,6 +572,7 @@ export const verifyDemoOtpAndAuthenticate = (
     usernameOrEmail: cleanEmail,
     isSignUp: false,
     provider: 'Demo Gmail OTP (1-Min Pass)',
+    isOtpVerified: true,
   });
 
   if (!authResult.success) {
@@ -577,6 +580,7 @@ export const verifyDemoOtpAndAuthenticate = (
       usernameOrEmail: cleanEmail,
       isSignUp: true,
       provider: 'Demo Gmail OTP (1-Min Pass)',
+      isOtpVerified: true,
     });
     if (!newReg.success) {
       return { success: false, error: newReg.error || 'Failed to authenticate demo student session' };
@@ -637,6 +641,7 @@ export const verifyOtpAndRegister = (
     usernameOrEmail: pending.email,
     password: pending.password,
     isSignUp: true,
+    isOtpVerified: true,
   });
 
   if (!regResult.success) {

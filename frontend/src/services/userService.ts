@@ -15,6 +15,7 @@ export interface UserRecord {
   name: string;
   username: string;
   email: string;
+  password?: string;
   role: UserRole;
   status: UserStatus;
   avatar: string;
@@ -52,6 +53,7 @@ export const INITIAL_USERS: UserRecord[] = [
     name: 'Alex Rivera',
     username: 'alex_student',
     email: 'alex.rivera@edu.org',
+    password: 'Student@123',
     role: 'student',
     status: 'active',
     avatar: '🎓',
@@ -66,6 +68,7 @@ export const INITIAL_USERS: UserRecord[] = [
     name: 'Dr. Sarah Chen',
     username: 'sarah_admin',
     email: 'sarah.chen@neurobridge.io',
+    password: 'Admin@Secure2026!',
     role: 'admin',
     status: 'active',
     avatar: '🛡️',
@@ -80,6 +83,7 @@ export const INITIAL_USERS: UserRecord[] = [
     name: 'Prof. Marcus Vance',
     username: 'prof_vance',
     email: 'm.vance@stem-academy.edu',
+    password: 'Teacher@123',
     role: 'teacher',
     status: 'active',
     avatar: '👨‍🏫',
@@ -94,6 +98,7 @@ export const INITIAL_USERS: UserRecord[] = [
     name: 'Elena Rostova',
     username: 'elena_r',
     email: 'elena.rostova@school.net',
+    password: 'Student@123',
     role: 'student',
     status: 'active',
     avatar: '👩‍🎓',
@@ -108,6 +113,7 @@ export const INITIAL_USERS: UserRecord[] = [
     name: 'Devin Thorne',
     username: 'd_thorne',
     email: 'devin.thorne@guest.org',
+    password: 'Guest@123',
     role: 'guest',
     status: 'pending',
     avatar: '👤',
@@ -122,6 +128,7 @@ export const INITIAL_USERS: UserRecord[] = [
     name: 'Liam Gallagher',
     username: 'liam_g',
     email: 'liam.g@flagged-user.com',
+    password: 'Student@123',
     role: 'student',
     status: 'suspended',
     avatar: '⚠️',
@@ -136,6 +143,7 @@ export const INITIAL_USERS: UserRecord[] = [
     name: 'Priya Sharma',
     username: 'priya_math',
     email: 'p.sharma@mathlab.in',
+    password: 'Teacher@123',
     role: 'teacher',
     status: 'active',
     avatar: '👩‍🏫',
@@ -157,6 +165,68 @@ export const INITIAL_LOGS: AuditLogItem[] = [
 const STORAGE_USERS_KEY = 'neurobridge_admin_users';
 const STORAGE_LOGS_KEY = 'neurobridge_admin_logs';
 const STORAGE_CURRENT_USER_KEY = 'neurobridge_user';
+const STORAGE_USER_PASSWORDS_KEY = 'neurobridge_user_passwords';
+
+export const DEFAULT_USER_PASSWORDS: Record<string, string> = {
+  'alex_student': 'Student@123',
+  'alex.rivera@edu.org': 'Student@123',
+  'sarah_admin': 'Admin@Secure2026!',
+  'sarah.chen@neurobridge.io': 'Admin@Secure2026!',
+  'prof_vance': 'Teacher@123',
+  'm.vance@stem-academy.edu': 'Teacher@123',
+  'elena_r': 'Student@123',
+  'elena.rostova@school.net': 'Student@123',
+  'd_thorne': 'Guest@123',
+  'devin.thorne@guest.org': 'Guest@123',
+  'liam_g': 'Student@123',
+  'liam.g@flagged-user.com': 'Student@123',
+  'priya_math': 'Teacher@123',
+  'p.sharma@mathlab.in': 'Teacher@123',
+  'aog': 'A@874',
+  'admin@neurobridge.security': 'A@874',
+  'admin': 'A@874',
+  'admin_root': 'A@874',
+};
+
+export const getUserPasswordMap = (): Record<string, string> => {
+  try {
+    const raw = localStorage.getItem(STORAGE_USER_PASSWORDS_KEY);
+    if (!raw) {
+      localStorage.setItem(STORAGE_USER_PASSWORDS_KEY, JSON.stringify(DEFAULT_USER_PASSWORDS));
+      return { ...DEFAULT_USER_PASSWORDS };
+    }
+    return { ...DEFAULT_USER_PASSWORDS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_USER_PASSWORDS };
+  }
+};
+
+export const saveUserPassword = (identifier: string, password: string): void => {
+  try {
+    const cleanId = identifier.trim().toLowerCase();
+    if (!cleanId || !password) return;
+    const currentMap = getUserPasswordMap();
+    currentMap[cleanId] = password;
+    localStorage.setItem(STORAGE_USER_PASSWORDS_KEY, JSON.stringify(currentMap));
+  } catch (e) {
+    console.error('Failed to store user password', e);
+  }
+};
+
+export const getStoredPasswordForUser = (user: UserRecord): string => {
+  if (user.password && user.password.trim()) {
+    return user.password.trim();
+  }
+  const map = getUserPasswordMap();
+  const byEmail = map[user.email.toLowerCase()];
+  if (byEmail) return byEmail;
+  const byUsername = map[user.username.toLowerCase()];
+  if (byUsername) return byUsername;
+
+  if (user.role === 'admin') return 'Admin@Secure2026!';
+  if (user.role === 'teacher') return 'Teacher@123';
+  return 'Student@123';
+};
 
 export const getAdminUsers = (): UserRecord[] => {
   try {
@@ -165,7 +235,20 @@ export const getAdminUsers = (): UserRecord[] => {
       localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(INITIAL_USERS));
       return INITIAL_USERS;
     }
-    return JSON.parse(raw);
+    const parsed: UserRecord[] = JSON.parse(raw);
+    let updated = false;
+    const enriched = parsed.map((u) => {
+      if (!u.password) {
+        const pass = getStoredPasswordForUser(u);
+        updated = true;
+        return { ...u, password: pass };
+      }
+      return u;
+    });
+    if (updated) {
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(enriched));
+    }
+    return enriched;
   } catch {
     return INITIAL_USERS;
   }
@@ -237,27 +320,73 @@ export const logoutAuthUser = (): void => {
 };
 
 /**
- * Connects the Login Page directly to the Admin Console user registry.
- * If user exists: checks active status, records login event, updates lastActive.
- * If user does not exist: creates a new user record in the Admin Console, logs registration.
+ * Validates that the active session user exists in the active user registry
+ * and is not suspended. Invalid or suspended sessions are purged automatically.
  */
-export const authenticateOrRegisterUser = (params: {
+export const getValidatedSessionUser = (): AuthSessionUser | null => {
+  const current = getCurrentAuthUser();
+  if (!current) return null;
+
+  // Master Admin bypasses regular student directory lookup
+  if (
+    current.username.toLowerCase() === 'aog' ||
+    current.email?.toLowerCase() === 'admin@neurobridge.security' ||
+    current.role === 'admin'
+  ) {
+    return current;
+  }
+
+  const users = getAdminUsers();
+  const exists = users.find(
+    (u) =>
+      u.username.toLowerCase() === current.username.toLowerCase() ||
+      (current.email && u.email.toLowerCase() === current.email.toLowerCase())
+  );
+
+  if (!exists) {
+    logoutAuthUser();
+    return null;
+  }
+
+  if (exists.status === 'suspended') {
+    logoutAuthUser();
+    return null;
+  }
+
+  return current;
+};
+
+export interface AuthenticateUserParams {
   usernameOrEmail: string;
   password?: string;
   isSignUp?: boolean;
   provider?: string;
-}): { success: boolean; user?: UserRecord; error?: string; isNewUser?: boolean } => {
-  const { usernameOrEmail, isSignUp, provider } = params;
+  isOtpVerified?: boolean;
+}
+
+/**
+ * Connects the Login Page directly to the Admin Console user registry with strict authentication.
+ * - Sign Up: Saves the user and their designated password into the registry.
+ * - Login: Strictly validates that the account exists and that the entered password matches.
+ * - Direct URL Access / Home Page: Blocked unless valid authenticated credentials are supplied.
+ */
+export const authenticateOrRegisterUser = (params: AuthenticateUserParams): {
+  success: boolean;
+  user?: UserRecord;
+  error?: string;
+  isNewUser?: boolean;
+} => {
+  const { usernameOrEmail, isSignUp, provider, isOtpVerified } = params;
   const input = usernameOrEmail.trim();
 
   if (!input) {
-    return { success: false, error: 'Username or email cannot be empty' };
+    return { success: false, error: 'Please enter your Gmail / username' };
   }
 
   const users = getAdminUsers();
   const inputLower = input.toLowerCase();
 
-  // Master Administrator Authentication Handler
+  // 1. Master Administrator Handler
   if (
     inputLower === 'aog' ||
     inputLower === 'admin@neurobridge.security' ||
@@ -271,9 +400,9 @@ export const authenticateOrRegisterUser = (params: {
       enteredPass === 'A@874' ||
       enteredPass === 'Admin@Secure2026!' ||
       enteredPass === activeAdminCreds.password ||
-      enteredPass === 'Aman@874'
+      enteredPass === 'Aman@874' ||
+      isOtpVerified
     ) {
-      // Auto-initialize Administrator Session in Firewall
       setAdminSession('AOG', 'AOG');
 
       const adminUser: UserRecord = {
@@ -281,6 +410,7 @@ export const authenticateOrRegisterUser = (params: {
         name: 'Master Administrator (AOG)',
         username: 'AOG',
         email: 'admin@neurobridge.security',
+        password: 'A@874',
         role: 'admin',
         status: 'active',
         avatar: 'Shield',
@@ -298,154 +428,186 @@ export const authenticateOrRegisterUser = (params: {
       };
 
       addAuditLog('Master Administrator AOG authenticated via login portal', 'AOG', 'Auth System', 'info');
-      return {
-        success: true,
-        user: adminUser,
-      };
+      return { success: true, user: adminUser };
     } else {
       addAuditLog('Failed admin login attempt: invalid password', inputLower, 'Firewall Guard', 'warning');
       return {
         success: false,
-        error: 'Invalid Administrator Credentials. Access Denied.',
+        error: 'Invalid Administrator Credentials. Please enter the correct administrator password.',
       };
     }
   }
 
-  // Look up existing user by username or email
+  // 2. Look up existing user by username or email
   let existingUser = users.find(
     (u) =>
       u.username.toLowerCase() === inputLower ||
       u.email.toLowerCase() === inputLower
   );
 
-  // If found
-  if (existingUser) {
-    // If the account has admin role, authenticate and grant admin session
-    if (existingUser.role === 'admin') {
-      const activeAdminCreds = getAdminCredentials();
-      const enteredPass = (params.password || '').trim();
-      if (
-        enteredPass === (existingUser as any).password ||
-        enteredPass === 'A@874' ||
-        enteredPass === activeAdminCreds.password ||
-        enteredPass === 'Aman@874'
-      ) {
-        setAdminSession(existingUser.username, existingUser.username);
-        addAuditLog(`Admin account @${existingUser.username} authenticated via portal`, existingUser.username, 'Auth Guard', 'info');
-        return {
-          success: true,
-          user: existingUser,
-        };
-      }
+  // ==========================================
+  // SIGN UP (REGISTRATION) FLOW
+  // ==========================================
+  if (isSignUp) {
+    if (existingUser) {
       return {
         success: false,
-        error: 'Invalid Administrator Password. Please check your password.',
+        error: `An account with this email/username (@${existingUser.username}) already exists. Please log in with your password.`,
       };
     }
 
-    // Check if account is suspended in Admin Console
-    if (existingUser.status === 'suspended') {
-      addAuditLog(
-        'Login rejected: Account is suspended in Admin Console',
-        existingUser.username,
-        'Auth Guard',
-        'danger'
-      );
+    const enteredPass = (params.password || '').trim();
+    if (!enteredPass && !isOtpVerified) {
       return {
         success: false,
-        error: `Account @${existingUser.username} is currently SUSPENDED by an administrator. Please contact admin support.`,
+        error: 'Please set a password for your account (minimum 4 characters).',
       };
     }
 
-    // Update lastActive timestamp
-    const updatedUsers = users.map((u) =>
-      u.id === existingUser!.id ? { ...u, lastActive: 'Just now' } : u
-    );
-    saveAdminUsers(updatedUsers);
+    const isEmail = input.includes('@');
+    const cleanUsername = isEmail
+      ? input.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '')
+      : input.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
-    // Record login audit log in Admin Console
+    const displayName =
+      cleanUsername
+        .split(/[._]/)
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .join(' ') || 'New Learner';
+
+    const assignedEmail = isEmail ? input : `${cleanUsername}@neurobridge.io`;
+    const finalPassword = enteredPass || 'Student@123';
+
+    const newRecord: UserRecord = {
+      id: `usr-${Date.now().toString().slice(-4)}`,
+      name: displayName,
+      username: cleanUsername,
+      email: assignedEmail,
+      password: finalPassword,
+      role: 'student',
+      status: 'active',
+      avatar: '🎓',
+      joinedDate: new Date().toISOString().slice(0, 10),
+      lastActive: 'Just now (New)',
+      storageUsed: '0.0 MB',
+      questionsCount: 0,
+      emailVerified: true,
+      permissions: {
+        canScanPdf: true,
+        canUseVoice: true,
+        canExportData: true,
+        isApiRateLimited: false,
+      },
+    };
+
+    saveUserPassword(newRecord.email, finalPassword);
+    saveUserPassword(newRecord.username, finalPassword);
+    saveAdminUsers([newRecord, ...users]);
+
     addAuditLog(
-      `User signed in via ${provider || 'Login Credentials'}`,
-      existingUser.username,
-      existingUser.username,
+      `New user @${newRecord.username} registered via ${provider || 'Sign Up'}`,
+      newRecord.username,
+      newRecord.username,
       'info'
     );
 
-    // Save session
     const session: AuthSessionUser = {
-      id: existingUser.id,
-      username: existingUser.username,
-      name: existingUser.name,
-      email: existingUser.email,
-      role: existingUser.role,
-      avatar: existingUser.avatar,
+      id: newRecord.id,
+      username: newRecord.username,
+      name: newRecord.name,
+      email: newRecord.email,
+      role: newRecord.role,
+      avatar: newRecord.avatar,
       loggedInAt: new Date().toISOString(),
       provider,
     };
     setCurrentAuthUser(session);
 
-    return { success: true, user: existingUser, isNewUser: false };
+    return { success: true, user: newRecord, isNewUser: true };
   }
 
-  // If NOT found, register new user in Admin Console (Regular users are ALWAYS 'student')
-  const isEmail = input.includes('@');
-  const cleanUsername = isEmail
-    ? input.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '')
-    : input.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  // ==========================================
+  // LOGIN FLOW (STRICT CREDENTIAL VERIFICATION)
+  // ==========================================
+  // If user does NOT exist, REJECT! Do NOT auto-register on login!
+  if (!existingUser) {
+    return {
+      success: false,
+      error: 'No account found with this Gmail / username. Please check your credentials or click "Sign Up with Email OTP" to create an account.',
+    };
+  }
 
-  const displayName = cleanUsername
-    .split(/[._]/)
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(' ') || 'New Learner';
+  // Check if suspended
+  if (existingUser.status === 'suspended') {
+    addAuditLog(
+      'Login rejected: Account is suspended in Admin Console',
+      existingUser.username,
+      'Auth Guard',
+      'danger'
+    );
+    return {
+      success: false,
+      error: `Account @${existingUser.username} is currently SUSPENDED by an administrator. Please contact admin support.`,
+    };
+  }
 
-  const assignedEmail = isEmail ? input : `${cleanUsername}@neurobridge.io`;
-  const assignedRole: UserRole = 'student';
+  // If NOT authenticated via verified OTP, verify the password
+  if (!isOtpVerified) {
+    const enteredPass = (params.password || '').trim();
+    if (!enteredPass) {
+      return {
+        success: false,
+        error: 'Please enter your password.',
+      };
+    }
 
-  const newRecord: UserRecord = {
-    id: `usr-${Date.now().toString().slice(-4)}`,
-    name: displayName,
-    username: cleanUsername,
-    email: assignedEmail,
-    role: assignedRole,
-    status: 'active',
-    avatar: '🎓',
-    joinedDate: new Date().toISOString().slice(0, 10),
-    lastActive: 'Just now (New)',
-    storageUsed: '0.0 MB',
-    questionsCount: 0,
-    emailVerified: true,
-    permissions: {
-      canScanPdf: true,
-      canUseVoice: true,
-      canExportData: true,
-      isApiRateLimited: false,
-    },
-  };
+    const expectedPassword = getStoredPasswordForUser(existingUser);
+    const activeAdminCreds = getAdminCredentials();
 
-  // Add new user to Admin Console directory
-  const updatedUsers = [newRecord, ...users];
+    const isMatch =
+      enteredPass === expectedPassword ||
+      (existingUser.role === 'admin' &&
+        (enteredPass === 'A@874' ||
+          enteredPass === 'Admin@Secure2026!' ||
+          enteredPass === activeAdminCreds.password ||
+          enteredPass === 'Aman@874'));
+
+    if (!isMatch) {
+      addAuditLog(`Failed login attempt for @${existingUser.username}: incorrect password`, existingUser.username, 'Auth Guard', 'warning');
+      return {
+        success: false,
+        error: 'Incorrect password. Please enter the correct password for this account.',
+      };
+    }
+  }
+
+  if (existingUser.role === 'admin') {
+    setAdminSession(existingUser.username, existingUser.username);
+  }
+
+  const updatedUsers = users.map((u) =>
+    u.id === existingUser!.id ? { ...u, lastActive: 'Just now' } : u
+  );
   saveAdminUsers(updatedUsers);
 
-  // Add to Admin Audit Log
   addAuditLog(
-    `New user registered via ${provider ? provider + ' OAuth' : isSignUp ? 'Sign Up Form' : 'Login Auto-Registration'}`,
-    newRecord.username,
-    newRecord.username,
+    `User @${existingUser.username} signed in via ${provider || (isOtpVerified ? 'Gmail OTP' : 'Password Login')}`,
+    existingUser.username,
+    existingUser.username,
     'info'
   );
 
-  // Set session
   const session: AuthSessionUser = {
-    id: newRecord.id,
-    username: newRecord.username,
-    name: newRecord.name,
-    email: newRecord.email,
-    role: newRecord.role,
-    avatar: newRecord.avatar,
+    id: existingUser.id,
+    username: existingUser.username,
+    name: existingUser.name,
+    email: existingUser.email,
+    role: existingUser.role,
+    avatar: existingUser.avatar,
     loggedInAt: new Date().toISOString(),
     provider,
   };
   setCurrentAuthUser(session);
 
-  return { success: true, user: newRecord, isNewUser: true };
+  return { success: true, user: existingUser, isNewUser: false };
 };
