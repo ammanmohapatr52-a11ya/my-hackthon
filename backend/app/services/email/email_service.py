@@ -216,6 +216,7 @@ class EmailService:
         Sends OTP email via SMTP (e.g. Gmail).
         Returns status dictionary indicating whether it was sent via live SMTP or needs setup.
         """
+        self.reload_config()
         clean_to = to_email.strip().lower()
         if not clean_to or "@" not in clean_to:
             return {"success": False, "error": "Invalid recipient email address"}
@@ -334,6 +335,7 @@ class EmailService:
         """
         Tests the SMTP server handshake & login, and optionally transmits a verification test ping.
         """
+        self.reload_config()
         if not self.is_configured():
             return {
                 "success": False,
