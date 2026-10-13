@@ -148,30 +148,33 @@ export const LoginPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [step]);
 
-  // 54 tick marks around the dial ring
+  // 54 tick marks around the dial ring with bright neon luminescence
   const TOTAL_TICKS = 54;
   const ticks = Array.from({ length: TOTAL_TICKS }, (_, i) => {
     const angle = (i * 360) / TOTAL_TICKS;
     const isOrangeGlow = angle >= 110 && angle <= 165;
     const isDimmed = angle > 165 && angle < 235;
 
-    let color = 'rgba(226, 232, 240, 0.75)';
-    let filter = 'none';
-    let opacity = 0.85;
+    let color = '#38bdf8';
+    let filter = 'drop-shadow(0 0 6px rgba(56, 189, 248, 0.9))';
+    let opacity = 0.9;
 
     if (isOrangeGlow) {
       color = '#f59e0b';
-      filter = 'drop-shadow(0 0 6px #f59e0b) drop-shadow(0 0 12px rgba(245, 158, 11, 0.6))';
+      filter = 'drop-shadow(0 0 8px #f59e0b) drop-shadow(0 0 16px rgba(245, 158, 11, 0.8))';
       opacity = 1;
     } else if (isDimmed) {
-      color = '#2a354b';
-      opacity = 0.35;
+      color = 'rgba(56, 189, 248, 0.45)';
+      filter = 'drop-shadow(0 0 4px rgba(56, 189, 248, 0.5))';
+      opacity = 0.55;
     } else if (angle >= 235 && angle <= 330) {
-      opacity = 0.95;
-      color = '#f8fafc';
+      opacity = 1;
+      color = '#e0f2fe';
+      filter = 'drop-shadow(0 0 8px #38bdf8) drop-shadow(0 0 14px rgba(224, 242, 254, 0.8))';
     } else {
-      opacity = 0.65;
-      color = '#cbd5e1';
+      opacity = 0.85;
+      color = '#38bdf8';
+      filter = 'drop-shadow(0 0 6px rgba(56, 189, 248, 0.75))';
     }
 
     return {
@@ -539,7 +542,7 @@ export const LoginPage: React.FC = () => {
       style={{
         minHeight: '100vh',
         width: '100%',
-        backgroundColor: '#070a12',
+        background: 'radial-gradient(circle at 50% 40%, #0d1629 0%, #080f1e 50%, #040813 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -551,8 +554,8 @@ export const LoginPage: React.FC = () => {
         color: '#f8fafc',
       }}
     >
-      {/* 1. Marvel 3D Photorealistic Cinematic Engine & Particle Canvas */}
-      <MarvelBackground3D />
+      {/* 1. Marvel 3D Photorealistic Luminous Engine & Particle Canvas */}
+      <MarvelBackground3D variant="login" />
 
       {/* Embedded Marvel 3D Holo Animations */}
       <style>{`
@@ -708,9 +711,10 @@ export const LoginPage: React.FC = () => {
         <div
           style={{
             position: 'absolute',
-            inset: '-18px',
+            inset: '-20px',
             borderRadius: '50%',
-            border: '1px dashed rgba(56, 189, 248, 0.3)',
+            border: '1.5px dashed rgba(56, 189, 248, 0.65)',
+            boxShadow: '0 0 25px rgba(56, 189, 248, 0.35)',
             animation: 'marvelSpinClockwise 50s linear infinite',
             pointerEvents: 'none',
             transform: 'translateZ(-15px)',
@@ -721,14 +725,14 @@ export const LoginPage: React.FC = () => {
         <div
           style={{
             position: 'absolute',
-            inset: '6px',
+            inset: '4px',
             borderRadius: '50%',
             border: '2px solid transparent',
-            borderTopColor: 'rgba(245, 158, 11, 0.65)',
-            borderBottomColor: 'rgba(56, 189, 248, 0.65)',
+            borderTopColor: 'rgba(245, 158, 11, 0.9)',
+            borderBottomColor: 'rgba(56, 189, 248, 0.9)',
             animation: 'marvelSpinCounter 36s linear infinite',
             pointerEvents: 'none',
-            filter: 'drop-shadow(0 0 10px rgba(56, 189, 248, 0.5))',
+            filter: 'drop-shadow(0 0 16px rgba(56, 189, 248, 0.75)) drop-shadow(0 0 14px rgba(245, 158, 11, 0.65))',
             transform: 'translateZ(-5px)',
           }}
         />
@@ -737,10 +741,10 @@ export const LoginPage: React.FC = () => {
         <div
           style={{
             position: 'absolute',
-            width: '440px',
-            height: '440px',
+            width: '460px',
+            height: '460px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, rgba(245, 158, 11, 0.12) 45%, transparent 72%)',
+            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.28) 0%, rgba(245, 158, 11, 0.22) 45%, transparent 72%)',
             pointerEvents: 'none',
             animation: 'marvelArcCorePulse 4s ease-in-out infinite',
             transform: 'translateZ(-25px)',
@@ -803,13 +807,13 @@ export const LoginPage: React.FC = () => {
             flexDirection: 'column',
             alignItems: 'center',
             textAlign: 'center',
-            backgroundColor: 'rgba(9, 14, 25, 0.88)',
-            border: '1px solid rgba(56, 189, 248, 0.35)',
+            background: 'linear-gradient(145deg, rgba(16, 26, 48, 0.84) 0%, rgba(10, 16, 32, 0.8) 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.5)',
             borderRadius: '24px',
-            padding: '24px 20px 20px 20px',
-            boxShadow: '0 0 45px rgba(2, 132, 199, 0.28), 0 20px 50px rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(22px)',
-            WebkitBackdropFilter: 'blur(22px)',
+            padding: '26px 22px 22px 22px',
+            boxShadow: '0 0 55px rgba(56, 189, 248, 0.32), 0 25px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
+            backdropFilter: 'blur(28px)',
+            WebkitBackdropFilter: 'blur(28px)',
             transform: 'translateZ(35px)',
           }}
         >

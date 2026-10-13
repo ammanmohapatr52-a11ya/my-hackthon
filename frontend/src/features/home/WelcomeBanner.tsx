@@ -74,7 +74,7 @@ export const WelcomeBanner: React.FC = () => {
         iconColor: '#f59e0b',
         periodLabel: t('home.period_morning', 'Morning Session'),
         tagline: t('home.tagline_morning', 'Start your morning with focus and clarity.'),
-        gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(2, 132, 199, 0.22) 100%)',
+        gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.28) 0%, rgba(2, 132, 199, 0.28) 50%, rgba(168, 85, 247, 0.2) 100%)',
       };
     } else if (hours >= 12 && hours < 17) {
       return {
@@ -83,7 +83,7 @@ export const WelcomeBanner: React.FC = () => {
         iconColor: '#fbbf24',
         periodLabel: t('home.period_afternoon', 'Afternoon Session'),
         tagline: t('home.tagline_afternoon', 'Keep up the great momentum and power through your study goals!'),
-        gradient: 'linear-gradient(135deg, rgba(2, 132, 199, 0.22) 0%, rgba(56, 189, 248, 0.18) 100%)',
+        gradient: 'linear-gradient(135deg, rgba(2, 132, 199, 0.32) 0%, rgba(56, 189, 248, 0.28) 50%, rgba(14, 165, 233, 0.2) 100%)',
       };
     } else if (hours >= 17 && hours < 21) {
       return {
@@ -92,7 +92,7 @@ export const WelcomeBanner: React.FC = () => {
         iconColor: '#f97316',
         periodLabel: t('home.period_evening', 'Evening Review'),
         tagline: t('home.tagline_evening', 'Great time to review your concepts and complete practice flashcards.'),
-        gradient: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18) 0%, rgba(99, 102, 241, 0.2) 100%)',
+        gradient: 'linear-gradient(135deg, rgba(249, 115, 22, 0.28) 0%, rgba(139, 92, 246, 0.28) 50%, rgba(56, 189, 248, 0.22) 100%)',
       };
     } else {
       return {
@@ -101,7 +101,7 @@ export const WelcomeBanner: React.FC = () => {
         iconColor: '#a78bfa',
         periodLabel: t('home.period_night', 'Night Session'),
         tagline: t('home.tagline_night', 'Late night learning? Stay curious and remember to rest well.'),
-        gradient: 'linear-gradient(135deg, rgba(79, 70, 229, 0.22) 0%, rgba(15, 23, 42, 0.4) 100%)',
+        gradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.32) 0%, rgba(168, 85, 247, 0.26) 50%, rgba(30, 41, 59, 0.5) 100%)',
       };
     }
   };
@@ -133,12 +133,14 @@ export const WelcomeBanner: React.FC = () => {
     <div
       style={{
         background: greetingInfo.gradient,
-        border: '1px solid rgba(56, 189, 248, 0.3)',
+        border: '1px solid rgba(56, 189, 248, 0.4)',
         borderRadius: 'var(--radius-lg)',
         padding: '2rem',
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: 'var(--shadow-md)',
+        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37), 0 0 25px rgba(56, 189, 248, 0.15)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         marginBottom: '1.75rem',
       }}
     >

@@ -43,8 +43,8 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   return (
     <div className="app-container" style={{ position: 'relative', overflowX: 'hidden' }}>
-      {/* 3D Marvel Cinematic Universe Background for all interfaces (excluding Login page) */}
-      <MarvelBackground3D />
+      {/* 3D Marvel Cinematic Universe Luminous Background Engine for all main interfaces */}
+      <MarvelBackground3D variant="main" />
 
       <SkipLinks />
 
