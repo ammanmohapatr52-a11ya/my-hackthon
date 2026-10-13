@@ -9,3 +9,17 @@ services:
         value: 10000
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: DEFAULT_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_MODEL
+        value: liquid/lfm-2.5-2.6b:free
+      - key: VERIFIER_ENABLED
+        value: "false"
+      - key: BREVO_SENDER_EMAIL
+        value: neurobridge123@gmail.com
+      - key: BREVO_SENDER_NAME
+        value: Neurobridge Stark Academy
+      - key: BREVO_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false

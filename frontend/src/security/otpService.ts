@@ -5,7 +5,7 @@
  */
 
 import { authenticateOrRegisterUser, type UserRecord } from '../services/userService';
-import { getApiUrl, getBackendBaseUrl, isBackendConfigured } from '../config/apiConfig';
+import { getApiUrl, getBackendBaseUrl, isBackendConfigured, isLocalhost } from '../config/apiConfig';
 
 export interface PendingRegistration {
   email: string;
@@ -124,9 +124,107 @@ export const clearPendingRegistration = (): void => {
   localStorage.removeItem(STORAGE_PENDING_REGISTRATION_KEY);
 };
 
+interface BackendOtpResponse {
+  ok: boolean;
+  isLiveDelivery: boolean;
+  channel: 'live_brevo_api' | 'live_gmail_smtp' | 'simulated_fallback';
+  message: string;
+  smtpStatus?: any;
+  error?: string;
+  alreadyUsed?: boolean;
+}
+
+/**
+ * Unified backend dispatch helper.
+ * Safely communicates with FastAPI backend, with automatic localhost fallback to Vite proxy.
+ */
+const callBackendSendOtp = async (payload: {
+  email: string;
+  username: string;
+  otp: string;
+  mode: string;
+  expires_in_seconds?: number;
+}): Promise<BackendOtpResponse> => {
+  const targetUrl = getApiUrl('/api/v1/auth/send-otp');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+
+  let response: Response | null = null;
+  let errorMsg = '';
+
+  try {
+    response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    // If targetUrl failed on localhost, retry via relative Vite proxy
+    if (isLocalhost() && targetUrl !== '/api/v1/auth/send-otp') {
+      try {
+        response = await fetch('/api/v1/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (proxyErr: any) {
+        errorMsg = proxyErr?.message || 'Connection failed';
+      }
+    } else {
+      errorMsg = err?.message || 'Connection failed';
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (response && response.ok) {
+    try {
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+      if (data.status === 'error' && data.already_used) {
+        return {
+          ok: false,
+          isLiveDelivery: false,
+          channel: 'simulated_fallback',
+          message: data.message,
+          error: data.message,
+          alreadyUsed: true,
+        };
+      }
+      const isLive = Boolean(data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp');
+      return {
+        ok: true,
+        isLiveDelivery: isLive,
+        channel: data.channel || (isLive ? 'live_brevo_api' : 'simulated_fallback'),
+        message: data.message || 'Verification passcode dispatched',
+        smtpStatus: data.smtp_status,
+      };
+    } catch {
+      return {
+        ok: false,
+        isLiveDelivery: false,
+        channel: 'simulated_fallback',
+        message: 'Invalid backend response format',
+      };
+    }
+  }
+
+  const backendBase = getBackendBaseUrl();
+  return {
+    ok: false,
+    isLiveDelivery: false,
+    channel: 'simulated_fallback',
+    message: response
+      ? `Backend returned status ${response.status}`
+      : `Backend service unreachable at ${backendBase || 'localhost:8000'}. Make sure FastAPI is running.`,
+    error: errorMsg,
+  };
+};
+
 /**
  * Dispatches an email OTP for user registration.
- * Connects directly to backend Gmail SMTP, saving pending state and alerting the UI.
+ * Connects directly to backend Brevo API / Gmail SMTP, saving pending state and alerting the UI.
  */
 export const sendRegistrationOtp = async (params: {
   email: string;
@@ -169,43 +267,19 @@ export const sendRegistrationOtp = async (params: {
 
   localStorage.setItem(STORAGE_PENDING_REGISTRATION_KEY, JSON.stringify(pendingData));
 
-  // Trigger live backend email dispatch via Brevo API / Gmail SMTP
-  let channel: 'live_brevo_api' | 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
-  let isLiveDelivery = false;
-  let backendMessage = '';
-  let smtpStatusInfo: any = null;
+  // Trigger backend email dispatch via Brevo API / Gmail SMTP
+  const backendResult = await callBackendSendOtp({
+    email: cleanEmail,
+    username: cleanUsername,
+    otp,
+    mode: 'registration',
+    expires_in_seconds: OTP_VALIDITY_SECONDS,
+  });
 
-  try {
-    const targetUrl = getApiUrl('/api/v1/auth/send-otp');
-    const controller = new AbortController();
-    const timeoutTimer = setTimeout(() => controller.abort(), 35000);
-    const res = await fetch(targetUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: cleanEmail, username: cleanUsername, otp, mode: 'registration' }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutTimer);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
-        channel = data.channel || 'live_brevo_api';
-        isLiveDelivery = true;
-        backendMessage = data.message;
-      } else {
-        smtpStatusInfo = data.smtp_status;
-        backendMessage = data.message;
-      }
-    } else {
-      backendMessage = `Backend server returned status ${res.status}`;
-    }
-  } catch (err: any) {
-    const isTimeout = err?.name === 'AbortError';
-    const backendBase = getBackendBaseUrl();
-    backendMessage = isTimeout
-      ? `Backend request timed out. If Render is waking from sleep, please wait 30 seconds and retry.`
-      : `Backend service unreachable at ${backendBase || 'Render'}. Ensure Render backend is running.`;
-  }
+  const channel = backendResult.channel;
+  const isLiveDelivery = backendResult.isLiveDelivery;
+  const backendMessage = backendResult.message;
+  const smtpStatusInfo = backendResult.smtpStatus;
 
   // Store dispatched notification so user can inspect history
   const notification: DispatchedOtpNotification = {
@@ -283,42 +357,19 @@ export const sendLoginOtp = async (params: {
 
   localStorage.setItem(STORAGE_PENDING_REGISTRATION_KEY, JSON.stringify(pendingData));
 
-  let channel: 'live_brevo_api' | 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
-  let isLiveDelivery = false;
-  let backendMessage = '';
-  let smtpStatusInfo: any = null;
+  // Trigger backend email dispatch via Brevo API / Gmail SMTP
+  const backendResult = await callBackendSendOtp({
+    email: cleanEmail,
+    username: cleanUsername,
+    otp,
+    mode: 'login',
+    expires_in_seconds: OTP_VALIDITY_SECONDS,
+  });
 
-  try {
-    const targetUrl = getApiUrl('/api/v1/auth/send-otp');
-    const controller = new AbortController();
-    const timeoutTimer = setTimeout(() => controller.abort(), 35000);
-    const res = await fetch(targetUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: cleanEmail, username: cleanUsername, otp, mode: 'login' }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutTimer);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
-        channel = data.channel || 'live_brevo_api';
-        isLiveDelivery = true;
-        backendMessage = data.message;
-      } else {
-        smtpStatusInfo = data.smtp_status;
-        backendMessage = data.message;
-      }
-    } else {
-      backendMessage = `Backend server returned status ${res.status}`;
-    }
-  } catch (err: any) {
-    const isTimeout = err?.name === 'AbortError';
-    const backendBase = getBackendBaseUrl();
-    backendMessage = isTimeout
-      ? `Backend request timed out. If Render is waking from sleep, please wait 30 seconds and retry.`
-      : `Backend service unreachable at ${backendBase || 'Render'}. Ensure Render backend is running.`;
-  }
+  const channel = backendResult.channel;
+  const isLiveDelivery = backendResult.isLiveDelivery;
+  const backendMessage = backendResult.message;
+  const smtpStatusInfo = backendResult.smtpStatus;
 
   const notification: DispatchedOtpNotification = {
     id: `notif-${Date.now()}`,
@@ -464,51 +515,23 @@ export const sendDemoOtp = async (params: {
 
   localStorage.setItem(STORAGE_PENDING_REGISTRATION_KEY, JSON.stringify(pendingData));
 
-  let channel: 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
-  let isLiveDelivery = false;
-  let backendMessage = '';
-  let smtpStatusInfo: any = null;
+  // Trigger backend email dispatch via Brevo API / Gmail SMTP
+  const backendResult = await callBackendSendOtp({
+    email: cleanEmail,
+    username: `Demo Student (${cleanUsername})`,
+    otp,
+    mode: 'demo',
+    expires_in_seconds: 60,
+  });
 
-  try {
-    const targetUrl = getApiUrl('/api/v1/auth/send-otp');
-    const controller = new AbortController();
-    const timeoutTimer = setTimeout(() => controller.abort(), 35000);
-    const res = await fetch(targetUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: cleanEmail,
-        username: `Demo Student (${cleanUsername})`,
-        otp,
-        mode: 'demo',
-        expires_in_seconds: 60,
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutTimer);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === 'error' && data.already_used) {
-        return { success: false, error: data.message };
-      }
-      if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
-        channel = data.channel || 'live_brevo_api';
-        isLiveDelivery = true;
-        backendMessage = data.message;
-      } else {
-        smtpStatusInfo = data.smtp_status;
-        backendMessage = data.message;
-      }
-    } else {
-      backendMessage = `Backend server returned status ${res.status}`;
-    }
-  } catch (err: any) {
-    const isTimeout = err?.name === 'AbortError';
-    const backendBase = getBackendBaseUrl();
-    backendMessage = isTimeout
-      ? `Backend request timed out. If Render is waking from sleep, please wait 30 seconds and retry.`
-      : `Backend service unreachable at ${backendBase || 'Render'}. Ensure Render backend is running.`;
+  if (backendResult.alreadyUsed) {
+    return { success: false, error: backendResult.message };
   }
+
+  const channel = backendResult.channel as any;
+  const isLiveDelivery = backendResult.isLiveDelivery;
+  const backendMessage = backendResult.message;
+  const smtpStatusInfo = backendResult.smtpStatus;
 
   const notification: DispatchedOtpNotification = {
     id: `notif-demo-${Date.now()}`,

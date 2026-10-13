@@ -26,7 +26,22 @@ export const getBackendBaseUrl = (): string => {
     return envUrl.replace(/\/+$/, '');
   }
 
-  // 2. Runtime override saved in localStorage (allows connecting Render URL directly from browser)
+  // 2. Localhost development fallback (always prioritize local FastAPI when on localhost)
+  if (isLocalhost()) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(STORAGE_KEY_BACKEND_URL);
+        if (stored && stored.trim() && (stored.includes('localhost') || stored.includes('127.0.0.1'))) {
+          return stored.trim().replace(/\/+$/, '');
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return 'http://127.0.0.1:8000';
+  }
+
+  // 3. Runtime override saved in localStorage for production / custom deployments
   try {
     if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem(STORAGE_KEY_BACKEND_URL);
@@ -38,12 +53,12 @@ export const getBackendBaseUrl = (): string => {
     // ignore storage access errors
   }
 
-  // 3. Localhost development fallback
-  if (isLocalhost()) {
-    return 'http://127.0.0.1:8000';
+  // 4. If running on Render (unified deployment serving both frontend and backend)
+  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+    return ''; // Same-origin relative URLs (/api/v1/...)
   }
 
-  // 4. Production on Vercel / HTTPS default backend:
+  // 5. Production on Vercel / external host default backend:
   return 'https://my-hackthon.onrender.com';
 };
 

@@ -34,11 +34,26 @@ async def ping():
     return {"status": "ok", "service": "neurobridge-api"}
 
 # Serve frontend build if dist folder exists
-dist_dir = settings.BASE_DIR / "frontend" / "dist"
-if dist_dir.exists():
+dist_candidates = [
+    (settings.BASE_DIR.parent / "frontend" / "dist").resolve(),
+    (settings.BASE_DIR / "frontend" / "dist").resolve(),
+    Path("frontend/dist").resolve(),
+    Path("dist").resolve(),
+]
+dist_dir = None
+for cand in dist_candidates:
+    if cand.exists() and (cand / "index.html").exists():
+        dist_dir = cand
+        break
+
+if dist_dir:
     assets_dir = dist_dir / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    images_dir = dist_dir / "images"
+    if images_dir.exists():
+        app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):

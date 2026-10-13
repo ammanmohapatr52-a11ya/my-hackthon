@@ -203,17 +203,17 @@ export const LoginPage: React.FC = () => {
       }
 
       setIsLiveDelivery(Boolean(otpRes.isLiveDelivery));
-      setLiveOtpPreview(otpRes.isLiveDelivery ? null : (otpRes.otpPreview || null));
+      setLiveOtpPreview(otpRes.otpPreview || null);
       setOtpRemainingSeconds(300);
       setResendCooldown(60);
       setStep('otp');
 
       if (otpRes.isLiveDelivery) {
-        setSuccessMsg(`⚡ Verification code dispatched directly to your Gmail: ${regEmail}! Please check your Inbox.`);
+        setSuccessMsg(`⚡ Verification code dispatched directly to your Gmail: ${regEmail}! Please check your Inbox (or Spam/Promotions folder).`);
         setError(null);
       } else {
         setSuccessMsg(null);
-        setError(`⚠️ Email dispatch notice: ${otpRes.message || 'Render backend is unavailable or starting up.'}`);
+        setError(`Notice: Live email delivery encountered an issue (${otpRes.message || 'Backend offline'}). Instant verification passcode is provided below.`);
       }
       return;
     }
@@ -242,17 +242,17 @@ export const LoginPage: React.FC = () => {
       }
 
       setIsLiveDelivery(Boolean(otpRes.isLiveDelivery));
-      setLiveOtpPreview(otpRes.isLiveDelivery ? null : (otpRes.otpPreview || null));
+      setLiveOtpPreview(otpRes.otpPreview || null);
       setOtpRemainingSeconds(300);
       setResendCooldown(60);
       setStep('otp');
 
       if (otpRes.isLiveDelivery) {
-        setSuccessMsg(`⚡ Login code dispatched directly to your Gmail: ${loginEmail}! Check your inbox.`);
+        setSuccessMsg(`⚡ Login code dispatched directly to your Gmail: ${loginEmail}! Please check your Inbox (or Spam/Promotions folder).`);
         setError(null);
       } else {
         setSuccessMsg(null);
-        setError(`⚠️ Email dispatch notice: ${otpRes.message || 'Render backend is unavailable or starting up.'}`);
+        setError(`Notice: Live email delivery encountered an issue (${otpRes.message || 'Backend offline'}). Instant verification passcode is provided below.`);
       }
       return;
     }
@@ -311,7 +311,8 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const targetEmail = (email || (username.includes('@') ? username : '')).trim().toLowerCase();
+    const pending = getPendingRegistration();
+    const targetEmail = (pending?.email || email || (username.includes('@') ? username : '')).trim().toLowerCase();
     setIsLoading(true);
 
     setTimeout(() => {
@@ -341,7 +342,8 @@ export const LoginPage: React.FC = () => {
     setSuccessMsg(null);
     setIsLoading(true);
 
-    const targetEmail = (email || (username.includes('@') ? username : '')).trim().toLowerCase();
+    const pending = getPendingRegistration();
+    const targetEmail = (pending?.email || email || (username.includes('@') ? username : '')).trim().toLowerCase();
     const targetUsername = username.trim() || targetEmail.split('@')[0];
 
     const res = isSignUp
@@ -358,15 +360,15 @@ export const LoginPage: React.FC = () => {
 
     if (res.success) {
       setIsLiveDelivery(Boolean(res.isLiveDelivery));
-      setLiveOtpPreview(null);
+      setLiveOtpPreview(res.otpPreview || null);
       setResendCooldown(60);
       setOtpRemainingSeconds(300);
-      if (res.success) {
+      if (res.isLiveDelivery) {
         setSuccessMsg(`⚡ A fresh verification OTP has been dispatched directly to your Gmail: ${targetEmail}`);
         setError(null);
       } else {
-        setError(res.error || `Unable to deliver fresh code to ${targetEmail}. Please try again.`);
-        setSuccessMsg(null);
+        setSuccessMsg(`⚡ Fresh OTP generated: ${res.otpPreview}`);
+        setError(null);
       }
     } else {
       setError(res.error || 'Unable to resend code');
@@ -1003,28 +1005,90 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {/* Delivery Status Indicator */}
-              <div
-                style={{
-                  backgroundColor: 'rgba(34, 197, 94, 0.12)',
-                  border: '1px solid rgba(34, 197, 94, 0.35)',
-                  borderRadius: '10px',
-                  padding: '0.65rem 0.85rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '0.76rem',
-                  color: '#86efac',
-                  textAlign: 'left',
-                }}
-              >
-                <CheckCircle size={16} style={{ flexShrink: 0, color: '#22c55e' }} />
-                <div>
-                  <strong>Verification Code Sent Directly to Your Gmail!</strong>
-                  <div style={{ color: '#cbd5e1', fontSize: '0.72rem', marginTop: '2px' }}>
-                    Delivered to <span style={{ color: '#38bdf8', fontWeight: 600 }}>{email || (username.includes('@') ? username : '')}</span>. Please check your Inbox (or Spam folder) and enter the 6 digits below.
+              {isLiveDelivery ? (
+                <div
+                  style={{
+                    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                    border: '1px solid rgba(34, 197, 94, 0.35)',
+                    borderRadius: '10px',
+                    padding: '0.65rem 0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '0.76rem',
+                    color: '#86efac',
+                    textAlign: 'left',
+                  }}
+                >
+                  <CheckCircle size={16} style={{ flexShrink: 0, color: '#22c55e' }} />
+                  <div>
+                    <strong>Verification Code Sent Directly to Your Gmail!</strong>
+                    <div style={{ color: '#cbd5e1', fontSize: '0.72rem', marginTop: '2px' }}>
+                      Delivered to <span style={{ color: '#38bdf8', fontWeight: 600 }}>{email || (username.includes('@') ? username : '')}</span> from <em>neurobridge123@gmail.com</em>. Please check your Inbox (or Spam/Promotions folder) and enter the 6 digits below.
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div
+                  style={{
+                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    borderRadius: '10px',
+                    padding: '0.65rem 0.85rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    fontSize: '0.76rem',
+                    color: '#fde68a',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertCircle size={16} style={{ flexShrink: 0, color: '#f59e0b' }} />
+                    <strong>Live Email Server Notice</strong>
+                  </div>
+                  <div style={{ color: '#cbd5e1', fontSize: '0.72rem' }}>
+                    Live email delivery could not be completed. You can use the instant backup passcode below to continue without interruption.
+                  </div>
+                  {liveOtpPreview && (
+                    <div
+                      style={{
+                        marginTop: '4px',
+                        padding: '6px 10px',
+                        backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                        border: '1px solid rgba(245, 158, 11, 0.5)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Backup Passcode: </span>
+                        <strong style={{ color: '#38bdf8', fontSize: '0.95rem', letterSpacing: '0.12em' }}>
+                          {liveOtpPreview}
+                        </strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEnteredOtp(liveOtpPreview)}
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          borderRadius: '6px',
+                          border: 'none',
+                          backgroundColor: '#f59e0b',
+                          color: '#0f172a',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Autofill
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* OTP Input Field */}
               <div style={{ position: 'relative', width: '100%' }}>
