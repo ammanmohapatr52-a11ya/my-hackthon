@@ -66,9 +66,15 @@ if dist_dir:
     if images_dir.exists():
         app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
 
+    NO_CACHE_HEADERS = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+
     @app.get("/")
     async def serve_spa_root():
-        return FileResponse(str(dist_dir / "index.html"))
+        return FileResponse(str(dist_dir / "index.html"), headers=NO_CACHE_HEADERS)
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
@@ -76,12 +82,14 @@ if dist_dir:
             return {"error": "API route not found"}
         target = dist_dir / full_path
         if target.exists() and target.is_file():
+            if target.suffix == ".html":
+                return FileResponse(str(target), headers=NO_CACHE_HEADERS)
             return FileResponse(str(target))
         # If target has directory with index.html
         if target.exists() and target.is_dir() and (target / "index.html").exists():
-            return FileResponse(str(target / "index.html"))
+            return FileResponse(str(target / "index.html"), headers=NO_CACHE_HEADERS)
         # SPA fallback to root index.html
-        return FileResponse(str(dist_dir / "index.html"))
+        return FileResponse(str(dist_dir / "index.html"), headers=NO_CACHE_HEADERS)
 else:
     @app.get("/")
     async def root():
