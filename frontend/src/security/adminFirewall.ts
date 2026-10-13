@@ -572,6 +572,29 @@ export const checkFirewallPass = (path: string): { allowed: boolean; reason?: st
     };
   }
 
+  // Strict User Role Isolation: Intercept non-admin/student accounts attempting admin traversal
+  try {
+    const rawAuth = localStorage.getItem('neurobridge_current_auth_user');
+    if (rawAuth) {
+      const authUser = JSON.parse(rawAuth);
+      if (authUser && authUser.role && authUser.role !== 'admin') {
+        const ev = recordFirewallIntrusion(
+          'UNAUTHORIZED_ROUTE_ACCESS',
+          path,
+          `Student/Non-admin account (@${authUser.username || 'user'}) attempted direct admin traversal`,
+          'critical'
+        );
+        return {
+          allowed: false,
+          reason: `Access Denied: Account has '${authUser.role}' role. The Admin Console is strictly reserved for verified System Administrators.`,
+          event: ev,
+        };
+      }
+    }
+  } catch {
+    // fallback safe
+  }
+
   // Check Admin Session
   const session = getAdminSession();
   if (!session) {

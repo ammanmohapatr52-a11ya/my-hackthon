@@ -1,4 +1,4 @@
-import { setAdminSession, getAdminCredentials } from '../security/adminFirewall';
+import { setAdminSession, getAdminCredentials, clearAdminSession } from '../security/adminFirewall';
 
 export type UserRole = 'admin' | 'teacher' | 'student' | 'guest';
 export type UserStatus = 'active' | 'suspended' | 'pending';
@@ -306,6 +306,9 @@ export const getCurrentAuthUser = (): AuthSessionUser | null => {
 };
 
 export const setCurrentAuthUser = (user: AuthSessionUser): void => {
+  if (user.role !== 'admin') {
+    clearAdminSession();
+  }
   localStorage.setItem(STORAGE_CURRENT_USER_KEY, JSON.stringify(user));
   window.dispatchEvent(new CustomEvent('neurobridge_auth_changed', { detail: user }));
 };
@@ -315,6 +318,7 @@ export const logoutAuthUser = (): void => {
   if (current) {
     addAuditLog('User logged out of session', current.username, current.username, 'info');
   }
+  clearAdminSession();
   localStorage.removeItem(STORAGE_CURRENT_USER_KEY);
   window.dispatchEvent(new CustomEvent('neurobridge_auth_changed', { detail: null }));
 };
@@ -583,6 +587,8 @@ export const authenticateOrRegisterUser = (params: AuthenticateUserParams): {
 
   if (existingUser.role === 'admin') {
     setAdminSession(existingUser.username, existingUser.username);
+  } else {
+    clearAdminSession();
   }
 
   const updatedUsers = users.map((u) =>

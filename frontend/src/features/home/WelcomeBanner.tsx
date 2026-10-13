@@ -7,7 +7,6 @@ import {
   Clock,
   Calendar,
   User,
-  Shield,
   LogOut,
   HelpCircle,
   FileText,
@@ -19,7 +18,6 @@ import {
 
 import { useLanguage } from '../../i18n/LanguageContext';
 import { getCurrentAuthUser, logoutAuthUser, type AuthSessionUser } from '../../services/userService';
-import { getAdminSession } from '../../security/adminFirewall';
 import { WelcomeTunePlayer } from './WelcomeTunePlayer';
 
 export const WelcomeBanner: React.FC = () => {
@@ -29,7 +27,6 @@ export const WelcomeBanner: React.FC = () => {
   // Current time state updating every second
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [currentUser, setCurrentUser] = useState<AuthSessionUser | null>(() => getCurrentAuthUser());
-  const [hasAdminSession, setHasAdminSession] = useState<boolean>(() => Boolean(getAdminSession()));
 
   useEffect(() => {
     // Tick clock every 1 second
@@ -46,21 +43,14 @@ export const WelcomeBanner: React.FC = () => {
       }
     };
 
-    const handleAdminAuthChange = () => {
-      setHasAdminSession(Boolean(getAdminSession()));
-    };
-
     window.addEventListener('neurobridge_auth_changed', handleAuthChange as EventListener);
-    window.addEventListener('neurobridge_admin_auth_changed', handleAdminAuthChange);
     window.addEventListener('storage', () => {
       setCurrentUser(getCurrentAuthUser());
-      setHasAdminSession(Boolean(getAdminSession()));
     });
 
     return () => {
       clearInterval(timer);
       window.removeEventListener('neurobridge_auth_changed', handleAuthChange as EventListener);
-      window.removeEventListener('neurobridge_admin_auth_changed', handleAdminAuthChange);
     };
   }, []);
 
@@ -308,23 +298,6 @@ export const WelcomeBanner: React.FC = () => {
               <FileText size={18} />
               <span>{t('nav.scan_pdf', 'PDF Scanner')}</span>
             </button>
-
-            {(currentUser?.role === 'admin' || hasAdminSession) && (
-              <Link
-                to="/admin"
-                className="btn btn-outline btn-lg"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  borderColor: 'rgba(56, 189, 248, 0.5)',
-                  color: '#38bdf8',
-                }}
-              >
-                <Shield size={18} />
-                <span>Admin Console</span>
-              </Link>
-            )}
           </div>
         </div>
 

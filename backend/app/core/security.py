@@ -101,12 +101,13 @@ def create_access_token(user_id: str, username: str, role: str, expires_in: int 
     nonce = secrets.token_hex(8)
     payload = f"{user_id}|{username}|{role}|{now}|{exp}|{nonce}"
     sig = hmac.new(SECRET_KEY.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
-    # Format: nb_sec.<payload_hex>.<sig>
-    return f"nb_sec.{payload.encode('utf-8').hex()}.{sig}"
+    # Format: nb_adm_sec.<payload_hex>.<sig> for admin, nb_sec.<payload_hex>.<sig> for others
+    prefix = "nb_adm_sec" if role == "admin" else "nb_sec"
+    return f"{prefix}.{payload.encode('utf-8').hex()}.{sig}"
 
 def verify_access_token(token: str) -> Optional[Dict[str, Any]]:
     """Verifies HMAC-SHA256 token validity and expiration with constant-time checking."""
-    if not token or not token.startswith("nb_sec."):
+    if not token or not (token.startswith("nb_sec.") or token.startswith("nb_adm_sec.")):
         # Legacy admin token fallback support
         if "nb_adm_sec" in token:
             return {"user_id": "AOG", "username": "AOG", "role": "admin", "valid": True}

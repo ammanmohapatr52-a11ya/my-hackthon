@@ -61,9 +61,10 @@ You MUST output strictly a JSON object with this exact structure:
   "graphableFunction": "Optional javascript math expression like x^2 - 5x + 6 if plottable, else empty string"
 }
 Rules:
-1. Provide 2 to 5 clear, logical derivation steps.
-2. Ensure mathematical correctness.
-3. ${langInstruction}
+1. Provide 2 to 5 clear, logical derivation steps with explicit formulas.
+2. Ensure mathematical and physical correctness: verify equations by back-substitution and check physical units.
+3. Eliminate hallucinations and shallow explanations (prevent underfitting and overfitting).
+4. ${langInstruction}
 Output JSON only, no markdown backticks, no commentary outside JSON.`;
 
   const userPrompt = `Solve this problem step-by-step: "${problemInput}"`;
