@@ -246,13 +246,14 @@ async def send_otp(req: Request):
         )
         
         if smtp_result.get("success"):
+            channel_name = smtp_result.get("delivered_via", "live_brevo_api")
             return {
                 "status": "success",
                 "message": f"{'Demo 1-minute verification code' if is_demo else 'Verification code'} sent directly to your Gmail: {email}",
                 "email": email,
                 "dispatched": True,
                 "is_live_delivery": True,
-                "channel": "live_gmail_smtp",
+                "channel": channel_name,
                 "otp_preview": otp,
                 "is_demo": is_demo,
                 "expires_in_seconds": expires_seconds,

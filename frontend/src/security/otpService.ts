@@ -32,7 +32,7 @@ export interface SendOtpResult {
   error?: string;
   otpPreview?: string;
   cooldownRemaining?: number;
-  channel?: 'live_gmail_smtp' | 'simulated_fallback';
+  channel?: 'live_brevo_api' | 'live_gmail_smtp' | 'simulated_fallback';
   isLiveDelivery?: boolean;
   message?: string;
   smtpStatus?: any;
@@ -168,8 +168,8 @@ export const sendRegistrationOtp = async (params: {
 
   localStorage.setItem(STORAGE_PENDING_REGISTRATION_KEY, JSON.stringify(pendingData));
 
-  // Trigger live backend SMTP dispatch to Gmail
-  let channel: 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
+  // Trigger live backend email dispatch via Brevo API / Gmail SMTP
+  let channel: 'live_brevo_api' | 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
   let isLiveDelivery = false;
   let backendMessage = '';
   let smtpStatusInfo: any = null;
@@ -182,8 +182,8 @@ export const sendRegistrationOtp = async (params: {
     });
     if (res.ok) {
       const data = await res.json();
-      if (data.channel === 'live_gmail_smtp') {
-        channel = 'live_gmail_smtp';
+      if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
+        channel = data.channel || 'live_brevo_api';
         isLiveDelivery = true;
         backendMessage = data.message;
       } else {
@@ -271,7 +271,7 @@ export const sendLoginOtp = async (params: {
 
   localStorage.setItem(STORAGE_PENDING_REGISTRATION_KEY, JSON.stringify(pendingData));
 
-  let channel: 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
+  let channel: 'live_brevo_api' | 'live_gmail_smtp' | 'simulated_fallback' = 'simulated_fallback';
   let isLiveDelivery = false;
   let backendMessage = '';
   let smtpStatusInfo: any = null;
@@ -284,8 +284,8 @@ export const sendLoginOtp = async (params: {
     });
     if (res.ok) {
       const data = await res.json();
-      if (data.channel === 'live_gmail_smtp') {
-        channel = 'live_gmail_smtp';
+      if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
+        channel = data.channel || 'live_brevo_api';
         isLiveDelivery = true;
         backendMessage = data.message;
       } else {
@@ -463,8 +463,8 @@ export const sendDemoOtp = async (params: {
       if (data.status === 'error' && data.already_used) {
         return { success: false, error: data.message };
       }
-      if (data.channel === 'live_gmail_smtp') {
-        channel = 'live_gmail_smtp';
+      if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
+        channel = data.channel || 'live_brevo_api';
         isLiveDelivery = true;
         backendMessage = data.message;
       } else {

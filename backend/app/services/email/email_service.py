@@ -12,7 +12,7 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv, set_key
-from backend.app.core.smtp_credentials import SMTP_ACTIVE_CONFIG
+from backend.app.core.smtp_credentials import SMTP_ACTIVE_CONFIG, BREVO_ACTIVE_CONFIG
 
 class EmailService:
     def __init__(self):
@@ -36,6 +36,13 @@ class EmailService:
         else:
             load_dotenv(override=True)
             
+        # Brevo (Sendinblue) Transactional API Configuration
+        self.brevo_api_key: str = (os.getenv("BREVO_API_KEY") or BREVO_ACTIVE_CONFIG["api_key"]).strip()
+        self.brevo_sender_email: str = (os.getenv("BREVO_SENDER_EMAIL") or BREVO_ACTIVE_CONFIG["sender_email"]).strip()
+        self.brevo_sender_name: str = (os.getenv("BREVO_SENDER_NAME") or BREVO_ACTIVE_CONFIG["sender_name"]).strip()
+        self.brevo_api_url: str = BREVO_ACTIVE_CONFIG.get("api_url", "https://api.brevo.com/v3/smtp/email")
+
+        # Fallback SMTP Relay Configuration
         self.host: str = (os.getenv("SMTP_HOST") or SMTP_ACTIVE_CONFIG["host"]).strip()
         self.port: int = int(os.getenv("SMTP_PORT") or SMTP_ACTIVE_CONFIG["port"])
         self.user: str = (os.getenv("SMTP_USER") or SMTP_ACTIVE_CONFIG["user"]).strip()
@@ -45,17 +52,19 @@ class EmailService:
         self.from_email: str = (os.getenv("SMTP_FROM_EMAIL") or self.user).strip() or self.user
 
     def is_configured(self) -> bool:
-        return bool(self.user and self.password)
+        return bool(self.brevo_api_key or (self.user and self.password))
 
     def get_public_config(self) -> Dict[str, Any]:
+        has_brevo = bool(self.brevo_api_key)
         return {
             "configured": self.is_configured(),
-            "host": self.host,
-            "port": self.port,
-            "user": self.user if self.user else "(Not configured)",
-            "from_name": self.from_name,
-            "masked_password": "••••••••••••" if self.password else "(Not configured)",
-            "provider": "Gmail SMTP" if "gmail" in self.host.lower() else "Custom SMTP",
+            "host": "api.brevo.com" if has_brevo else self.host,
+            "port": 443 if has_brevo else self.port,
+            "user": self.brevo_sender_email if has_brevo else (self.user if self.user else "(Not configured)"),
+            "from_name": self.brevo_sender_name if has_brevo else self.from_name,
+            "masked_password": f"{self.brevo_api_key[:10]}••••{self.brevo_api_key[-6:]}" if has_brevo else ("••••••••••••" if self.password else "(Not configured)"),
+            "provider": "Brevo Transactional API (Active)" if has_brevo else ("Gmail SMTP" if "gmail" in self.host.lower() else "Custom SMTP"),
+            "brevo_active": has_brevo,
         }
 
     def update_config(
@@ -212,45 +221,15 @@ class EmailService:
 </body>
 </html>"""
 
-    def send_otp_email(self, to_email: str, username: str, otp: str, expires_minutes: int = 10, is_demo: bool = False) -> Dict[str, Any]:
+    def send_via_brevo(self, to_email: str, username: str, otp: str, expires_minutes: int = 10, is_demo: bool = False) -> Dict[str, Any]:
         """
-        Sends OTP email via SMTP (e.g. Gmail).
-        Returns status dictionary indicating whether it was sent via live SMTP or needs setup.
+        Dispatches OTP email directly via Brevo (Sendinblue) Transactional REST API.
+        Uses https://api.brevo.com/v3/smtp/email with api-key header.
         """
-        self.reload_config()
         clean_to = to_email.strip().lower()
-        if not clean_to or "@" not in clean_to:
-            return {"success": False, "error": "Invalid recipient email address"}
+        if not self.brevo_api_key:
+            return {"success": False, "error": "Brevo API key not configured"}
 
-        # If SMTP is not yet configured with user/pass
-        if not self.is_configured():
-            return {
-                "success": False,
-                "needs_config": True,
-                "error": "Gmail SMTP is not configured. Please provide your Gmail address and Google App Password.",
-                "hint": "Create a Google App Password at https://myaccount.google.com/apppasswords and save it in settings.",
-                "otp_preview": otp
-            }
-
-        # Pre-validate Gmail App Password format
-        if "gmail" in self.host.lower():
-            clean_pass = self.password.strip().replace(" ", "")
-            if len(clean_pass) != 16 or not clean_pass.isalpha():
-                err_msg = (
-                    "Google rejects personal account passwords on SMTP. "
-                    "You must use a 16-character Google App Password (e.g. 'abcd efgh ijkl mnop') "
-                    "generated from https://myaccount.google.com/apppasswords"
-                )
-                print(f"\n[NEUROBRIDGE SMTP REJECTED] {err_msg} (Provided password length: {len(clean_pass)})")
-                return {
-                    "success": False,
-                    "error": err_msg,
-                    "details": "Invalid password format for Gmail SMTP. Expected 16-letter App Password.",
-                    "hint": "1. Turn on 2-Step Verification: https://myaccount.google.com/security\n2. Generate a 16-letter App Password: https://myaccount.google.com/apppasswords",
-                    "otp_preview": otp
-                }
-
-        # Build MIME Message
         if is_demo or expires_minutes <= 1:
             subject = f"One-Time Demo Access Code: {otp} (Valid for 1 Minute)"
             html_content = self.generate_otp_html(username, otp, expires_minutes=1, to_email=clean_to)
@@ -276,24 +255,93 @@ class EmailService:
                 f"Security Notice: Never share this code with anyone.\n"
             )
 
+        payload = {
+            "sender": {
+                "name": self.brevo_sender_name or "NEUROBRIDGE Stark Academy",
+                "email": self.brevo_sender_email or "neurobridge123@gmail.com"
+            },
+            "to": [
+                {
+                    "email": clean_to,
+                    "name": username or clean_to.split("@")[0]
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_content,
+            "textContent": text_content
+        }
+
+        try:
+            import urllib.request
+            import json
+
+            data_bytes = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                self.brevo_api_url,
+                data=data_bytes,
+                headers={
+                    "api-key": self.brevo_api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                method="POST"
+            )
+
+            with urllib.request.urlopen(req, timeout=12) as response:
+                resp_text = response.read().decode("utf-8")
+                res_json = json.loads(resp_text) if resp_text else {}
+                message_id = res_json.get("messageId", "")
+                print(f"\n[NEUROBRIDGE BREVO API DISPATCH] Email successfully sent to {clean_to} (MessageId: {message_id})")
+                return {
+                    "success": True,
+                    "delivered_via": "live_brevo_api",
+                    "recipient": clean_to,
+                    "messageId": message_id,
+                    "provider": "Brevo API",
+                    "message": f"Verification code successfully dispatched directly to {clean_to} via Brevo Mailer"
+                }
+        except Exception as e:
+            print(f"\n[NEUROBRIDGE BREVO ERROR] API dispatch failed: {e}")
+            return {
+                "success": False,
+                "error": f"Brevo API error: {str(e)}",
+                "details": str(e)
+            }
+
+    def _send_via_smtp(self, to_email: str, username: str, otp: str, expires_minutes: int = 10, is_demo: bool = False) -> Dict[str, Any]:
+        """Fallback direct SMTP email dispatch via Gmail/other mail providers."""
+        clean_to = to_email.strip().lower()
+        if not (self.user and self.password):
+            return {
+                "success": False,
+                "needs_config": True,
+                "error": "SMTP is not configured with user/password.",
+                "otp_preview": otp
+            }
+
+        if is_demo or expires_minutes <= 1:
+            subject = f"One-Time Demo Access Code: {otp} (Valid for 1 Minute)"
+            html_content = self.generate_otp_html(username, otp, expires_minutes=1, to_email=clean_to)
+            text_content = f"Your Neurobridge demo code: {otp} (valid for 1 minute)."
+        else:
+            subject = f"Security Verification: {otp} (Neurobridge Login Code)"
+            html_content = self.generate_otp_html(username, otp, expires_minutes=expires_minutes, to_email=clean_to)
+            text_content = f"Your Neurobridge verification code: {otp} (expires in {expires_minutes} minutes)."
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = f"{self.from_name} <{self.user}>"
         msg["To"] = clean_to
-
         msg.attach(MIMEText(text_content, "plain", "utf-8"))
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
         try:
             context = ssl.create_default_context()
-            
             if self.port == 465:
-                # SSL Direct
                 with smtplib.SMTP_SSL(self.host, self.port, context=context, timeout=12) as server:
                     server.login(self.user, self.password)
                     server.sendmail(self.user, [clean_to], msg.as_string())
             else:
-                # STARTTLS (Port 587 default for Gmail)
                 with smtplib.SMTP(self.host, self.port, timeout=12) as server:
                     server.ehlo()
                     server.starttls(context=context)
@@ -304,27 +352,13 @@ class EmailService:
             print(f"\n[NEUROBRIDGE SMTP DISPATCH] Live Email successfully sent to {clean_to} via {self.host}:{self.port}!")
             return {
                 "success": True,
-                "delivered_via": "live_smtp",
+                "delivered_via": "live_gmail_smtp",
                 "recipient": clean_to,
                 "host": self.host,
                 "message": f"Verification code successfully dispatched directly to {clean_to}"
             }
-
-        except (smtplib.SMTPAuthenticationError, smtplib.SMTPServerDisconnected) as e:
-            err_msg = (
-                "Gmail SMTP authentication failed. Google strictly prohibits standard personal account passwords. "
-                "You MUST use a 16-character 'Google App Password' generated at: https://myaccount.google.com/apppasswords"
-            )
-            print(f"\n[NEUROBRIDGE SMTP ERROR] {err_msg} Details: {e}")
-            return {
-                "success": False,
-                "error": err_msg,
-                "details": str(e),
-                "hint": "1. Turn on 2-Step Verification at https://myaccount.google.com/security\n2. Create an App Password at https://myaccount.google.com/apppasswords",
-                "otp_preview": otp
-            }
         except Exception as e:
-            print(f"\n[NEUROBRIDGE SMTP ERROR] Connection failed: {e}")
+            print(f"\n[NEUROBRIDGE SMTP ERROR] SMTP dispatch failed: {e}")
             return {
                 "success": False,
                 "error": f"Failed to connect to SMTP server ({self.host}:{self.port}): {str(e)}",
@@ -332,31 +366,88 @@ class EmailService:
                 "otp_preview": otp
             }
 
-    def test_connection(self, to_email: Optional[str] = None) -> Dict[str, Any]:
+    def send_otp_email(self, to_email: str, username: str, otp: str, expires_minutes: int = 10, is_demo: bool = False) -> Dict[str, Any]:
         """
-        Tests the SMTP server handshake & login, and optionally transmits a verification test ping.
+        Sends OTP email via Brevo REST API (Primary) with fallback to Gmail SMTP.
         """
         self.reload_config()
-        if not self.is_configured():
+        clean_to = to_email.strip().lower()
+        if not clean_to or "@" not in clean_to:
+            return {"success": False, "error": "Invalid recipient email address"}
+
+        # 1. Primary Dispatch Channel: Brevo REST API
+        if self.brevo_api_key:
+            brevo_res = self.send_via_brevo(clean_to, username, otp, expires_minutes=expires_minutes, is_demo=is_demo)
+            if brevo_res.get("success"):
+                return brevo_res
+            print(f"[NEUROBRIDGE DISPATCH] Brevo API encountered an issue ({brevo_res.get('error')}), falling back to SMTP...")
+
+        # 2. Secondary Fallback Channel: Direct SMTP
+        return self._send_via_smtp(clean_to, username, otp, expires_minutes=expires_minutes, is_demo=is_demo)
+
+    def test_connection(self, to_email: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Tests email dispatch capability via Brevo API or SMTP.
+        """
+        self.reload_config()
+        if self.brevo_api_key:
+            try:
+                import urllib.request
+                import json
+
+                if to_email and "@" in to_email:
+                    payload = {
+                        "sender": {
+                            "name": self.brevo_sender_name or "NEUROBRIDGE Stark Academy",
+                            "email": self.brevo_sender_email or "neurobridge123@gmail.com"
+                        },
+                        "to": [{"email": to_email.strip().lower(), "name": "Admin Tester"}],
+                        "subject": "⚡ Neurobridge Live Dispatch Test: Brevo API Connected!",
+                        "htmlContent": "<h3>Neurobridge Brevo API Connected!</h3><p>Live OTP verification codes are now transmitting directly to recipient inboxes.</p>"
+                    }
+                    data_bytes = json.dumps(payload).encode("utf-8")
+                    req = urllib.request.Request(
+                        self.brevo_api_url,
+                        data=data_bytes,
+                        headers={
+                            "api-key": self.brevo_api_key,
+                            "Content-Type": "application/json"
+                        },
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req, timeout=10) as res:
+                        return {
+                            "success": True,
+                            "message": f"Brevo API Connected! Live test email dispatched to {to_email}.",
+                            "sender": self.brevo_sender_email,
+                            "provider": "Brevo API"
+                        }
+                else:
+                    req = urllib.request.Request(
+                        "https://api.brevo.com/v3/account",
+                        headers={"api-key": self.brevo_api_key}
+                    )
+                    with urllib.request.urlopen(req, timeout=10) as res:
+                        account_data = json.loads(res.read().decode("utf-8"))
+                        return {
+                            "success": True,
+                            "message": f"Brevo API Connected successfully for {account_data.get('email')} ({account_data.get('companyName')})!",
+                            "sender": account_data.get("email"),
+                            "provider": "Brevo API"
+                        }
+            except Exception as e:
+                print(f"[NEUROBRIDGE TEST] Brevo test encountered: {e}, testing SMTP...")
+
+        # Fallback to testing SMTP
+        return self._test_smtp_connection(to_email=to_email)
+
+    def _test_smtp_connection(self, to_email: Optional[str] = None) -> Dict[str, Any]:
+        """Tests SMTP connection directly."""
+        if not (self.user and self.password):
             return {
                 "success": False,
-                "error": "Gmail SMTP is not configured. Please supply your Gmail address and 16-character Google App Password.",
-                "hint": "Generate a Google App Password at: https://myaccount.google.com/apppasswords"
+                "error": "Email dispatcher is not configured. Please supply Brevo API key or Gmail SMTP credentials.",
             }
-
-        # Pre-validate Gmail App Password format
-        if "gmail" in self.host.lower():
-            clean_pass = self.password.strip().replace(" ", "")
-            if len(clean_pass) != 16 or not clean_pass.isalpha():
-                return {
-                    "success": False,
-                    "error": (
-                        f"Detected regular Gmail password ('{self.password[:3]}...'). "
-                        "Google strictly prohibits standard account passwords on SMTP. "
-                        "You must use a 16-character Google App Password (e.g. 'abcd efgh ijkl mnop')."
-                    ),
-                    "hint": "1. Turn on 2-Step Verification: https://myaccount.google.com/security\n2. Create 16-letter App Password: https://myaccount.google.com/apppasswords\n3. Paste the 16 letters into the password field."
-                }
 
         try:
             context = ssl.create_default_context()
@@ -369,38 +460,20 @@ class EmailService:
                 server.ehlo()
 
             server.login(self.user, self.password)
-
             if to_email and "@" in to_email:
                 clean_to = to_email.strip().lower()
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = "⚡ Neurobridge Live Dispatch Test: Connection Successful!"
                 msg["From"] = f"{self.from_name} <{self.user}>"
                 msg["To"] = clean_to
-
-                body = (
-                    f"Hello!\n\n"
-                    f"Your Neurobridge Gmail SMTP Gateway is verified and active!\n"
-                    f"Sender: {self.user}\n"
-                    f"Recipient: {clean_to}\n"
-                    f"Host: {self.host}:{self.port}\n\n"
-                    f"All OTP verification codes will now be dispatched directly to your Gmail inbox.\n"
-                )
-                msg.attach(MIMEText(body, "plain", "utf-8"))
+                msg.attach(MIMEText("Your Neurobridge Gmail SMTP Gateway is verified and active!\n", "plain", "utf-8"))
                 server.sendmail(self.user, [clean_to], msg.as_string())
-
             server.quit()
             return {
                 "success": True,
                 "message": f"SMTP authentication successful via {self.host}:{self.port} as {self.user}!" + (f" Test email sent to {to_email}." if to_email else ""),
                 "sender": self.user,
                 "host": self.host,
-            }
-        except (smtplib.SMTPAuthenticationError, smtplib.SMTPServerDisconnected) as e:
-            return {
-                "success": False,
-                "error": "Gmail SMTP Authentication Failed. Google strictly prohibits standard personal account passwords.",
-                "details": str(e),
-                "hint": "1. Turn on 2-Step Verification at https://myaccount.google.com/security\n2. Create a 16-character App Password at https://myaccount.google.com/apppasswords\n3. Paste that 16-letter code into the setup modal."
             }
         except Exception as e:
             return {
