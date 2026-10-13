@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Mail,
   Lock,
   Eye,
   EyeOff,
   User,
-  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Sparkles,
@@ -41,8 +40,6 @@ import {
 } from '../security/otpService';
 import { MarvelBackground3D } from '../components/ui/MarvelBackground3D';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
-import { BackendConfigModal } from '../components/ui/BackendConfigModal';
-import { getBackendBaseUrl, isBackendConfigured, isLocalhost } from '../config/apiConfig';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -83,8 +80,6 @@ export const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [isBackendModalOpen, setIsBackendModalOpen] = useState(false);
-  const [backendUrl, setBackendUrl] = useState<string>(() => getBackendBaseUrl());
 
   // Demo Access Modal State (Gmail + 1-Minute OTP, strictly single-use per Gmail)
   const [demoModalOpen, setDemoModalOpen] = useState(false);
@@ -529,108 +524,41 @@ export const LoginPage: React.FC = () => {
           }
         }
       `}</style>
-      {/* Top Bar with Back Link & Decoupled Admin Gateway Link */}
+      {/* Top Bar with Demo Mode Action */}
       <div
         style={{
           position: 'absolute',
           top: '1.25rem',
-          left: '1.5rem',
           right: '1.5rem',
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
           zIndex: 20,
         }}
       >
-        <Link
-          to="/"
-          id="login-back-to-app-button"
+        {/* Quick Demo Button (Opens Gmail + 1-Min OTP modal) */}
+        <button
+          type="button"
+          id="login-demo-account-button"
+          onClick={handleDemoLogin}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.5rem',
-            color: '#94a3b8',
-            fontSize: '0.9rem',
-            textDecoration: 'none',
-            padding: '0.4rem 0.85rem',
+            gap: '0.4rem',
+            background: 'rgba(245, 158, 11, 0.1)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            color: '#f59e0b',
+            fontSize: '0.8rem',
+            fontWeight: 500,
+            padding: '0.35rem 0.75rem',
             borderRadius: '9999px',
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(8px)',
+            cursor: 'pointer',
             transition: 'all 0.2s ease',
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#f59e0b';
-            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = '#94a3b8';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-          }}
+          title="Start One-Time Demo Session via Gmail OTP (No password required, 1-minute validity)"
         >
-          <ArrowLeft size={16} />
-          <span>Back to App</span>
-        </Link>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          {/* Render Backend Connection Status & Config Button */}
-          <button
-            type="button"
-            id="login-backend-config-button"
-            onClick={() => setIsBackendModalOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              background: backendUrl ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.15)',
-              border: `1px solid ${backendUrl ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.45)'}`,
-              color: backendUrl ? '#10b981' : '#f59e0b',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              padding: '0.35rem 0.75rem',
-              borderRadius: '9999px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            title={backendUrl ? `Backend active: ${backendUrl} (Click to manage)` : 'Connect Render backend URL to enable live Gmail OTP'}
-          >
-            <span
-              style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                backgroundColor: backendUrl ? '#10b981' : '#f59e0b',
-                boxShadow: backendUrl ? '0 0 8px #10b981' : '0 0 8px #f59e0b',
-              }}
-            />
-            <span>{backendUrl ? (isLocalhost() ? 'Backend (Local)' : 'Render Connected') : 'Connect Backend'}</span>
-          </button>
-
-          {/* Quick Demo Button (Opens Gmail + 1-Min OTP modal) */}
-          <button
-            type="button"
-            id="login-demo-account-button"
-            onClick={handleDemoLogin}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              color: '#f59e0b',
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              padding: '0.35rem 0.75rem',
-              borderRadius: '9999px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            title="Start One-Time Demo Session via Gmail OTP (No password required, 1-minute validity)"
-          >
-            <Sparkles size={14} />
-            <span>Demo Mode (Gmail OTP)</span>
-          </button>
-        </div>
+          <Sparkles size={14} />
+          <span>Demo Mode (Gmail OTP)</span>
+        </button>
       </div>
 
       {/* Main 3D Perspective Reactor Dial Center Container */}
@@ -2217,17 +2145,7 @@ export const LoginPage: React.FC = () => {
         </div>
       )}
 
-      {/* Backend Server Configuration Modal */}
-      <BackendConfigModal
-        isOpen={isBackendModalOpen}
-        onClose={() => {
-          setIsBackendModalOpen(false);
-          setBackendUrl(getBackendBaseUrl());
-        }}
-        onConnected={() => {
-          setBackendUrl(getBackendBaseUrl());
-        }}
-      />
+
 
     </div>
   );
