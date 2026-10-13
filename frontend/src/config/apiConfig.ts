@@ -43,8 +43,8 @@ export const getBackendBaseUrl = (): string => {
     return 'http://127.0.0.1:8000';
   }
 
-  // 4. Production on Vercel / HTTPS without explicit backend URL:
-  return '';
+  // 4. Production on Vercel / HTTPS default backend:
+  return 'https://my-hackthon.onrender.com';
 };
 
 export const setBackendBaseUrl = (url: string): void => {

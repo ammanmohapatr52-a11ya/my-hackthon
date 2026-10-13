@@ -4,9 +4,9 @@
   "description": "Accessible Academic Problem Solver · Team Neurobridge · NEXTECH 2.0",
   "scripts": {
     "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && pip install -r backend/requirements.txt",
     "preview": "npm --prefix frontend run preview",
-    "start": "npx --yes serve frontend/dist -s -l $PORT"
+    "start": "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT || uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT || npx --yes serve frontend/dist -s -l $PORT"
   },
   "keywords": [
     "accessibility",
