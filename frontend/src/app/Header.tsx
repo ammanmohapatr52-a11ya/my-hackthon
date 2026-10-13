@@ -92,7 +92,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = f
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <MarvelAvatar hero="ironman" size="sm" title="Neurobridge Stark AI" />
+            <img
+              src="/images/login_logo.png"
+              alt="Neurobridge Logo"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '1.5px solid #f59e0b',
+                boxShadow: '0 0 10px rgba(245, 158, 11, 0.45)',
+              }}
+            />
             <div>
               <span
                 style={{

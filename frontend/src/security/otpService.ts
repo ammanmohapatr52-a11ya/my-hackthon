@@ -499,7 +499,6 @@ export const sendDemoOtp = async (params: {
 
   return {
     success: true,
-    otpPreview: otp,
     channel,
     isLiveDelivery,
     message: backendMessage,

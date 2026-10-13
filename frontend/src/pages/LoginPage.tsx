@@ -107,7 +107,6 @@ export const LoginPage: React.FC = () => {
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoSuccess, setDemoSuccess] = useState<string | null>(null);
   const [isDemoSubmitting, setIsDemoSubmitting] = useState(false);
-  const [demoOtpPreview, setDemoOtpPreview] = useState<string | null>(null);
 
   // Load live SMTP status on mount
   useEffect(() => {
@@ -425,7 +424,6 @@ export const LoginPage: React.FC = () => {
     setDemoError(null);
     setDemoSuccess(null);
     setDemoTimer(OTP_DEMO_VALIDITY_SECONDS);
-    setDemoOtpPreview(null);
   };
 
   const handleInstantDemoLogin = () => {
@@ -467,8 +465,7 @@ export const LoginPage: React.FC = () => {
 
       setDemoStep('otp');
       setDemoTimer(OTP_DEMO_VALIDITY_SECONDS);
-      setDemoOtpPreview(res.otpPreview || null);
-      setDemoSuccess(`Demo passcode dispatched to ${clean}! Valid for exactly 60 seconds.`);
+      setDemoSuccess(`⚡ 6-digit passcode dispatched directly to your Gmail: ${clean}! Valid for 60 seconds.`);
     } catch (err: any) {
       setIsDemoSubmitting(false);
       setDemoError('Network error connecting to verification service.');
@@ -684,17 +681,28 @@ export const LoginPage: React.FC = () => {
             transform: 'translateZ(45px)',
           }}
         >
-          <MarvelAvatar hero="ironman" size="xs" title="Stark AI Protocol" />
+          <img
+            src="/images/login_logo.png"
+            alt="Academy Logo"
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              border: '1.5px solid #f59e0b',
+              boxShadow: '0 0 10px rgba(245, 158, 11, 0.5)',
+            }}
+          />
           <span
             style={{
               fontSize: '0.74rem',
               fontWeight: 800,
               letterSpacing: '0.12em',
-              color: '#38bdf8',
+              color: '#f59e0b',
               textTransform: 'uppercase',
             }}
           >
-            Stark Arc Protocol // Mark LXXXV
+            Neurobridge Academic Portal
           </span>
           <span
             style={{
@@ -873,6 +881,43 @@ export const LoginPage: React.FC = () => {
               filter: 'drop-shadow(0 0 4px #f59e0b)',
             }}
           />
+
+          {/* Official Academic Academy Logo */}
+          <div
+            style={{
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                position: 'relative',
+                width: '82px',
+                height: '82px',
+                borderRadius: '50%',
+                padding: '3px',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #38bdf8 50%, #d97706 100%)',
+                boxShadow: '0 0 35px rgba(245, 158, 11, 0.6), 0 0 16px rgba(56, 189, 248, 0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <img
+                src="/images/login_logo.png"
+                alt="Neurobridge Learning Logo"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            </div>
+          </div>
 
           {/* Header Title */}
           <h1
@@ -1821,21 +1866,18 @@ export const LoginPage: React.FC = () => {
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div
+                <img
+                  src="/images/login_logo.png"
+                  alt="Neurobridge Logo"
                   style={{
                     width: '38px',
                     height: '38px',
                     borderRadius: '10px',
-                    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid #38bdf8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#38bdf8',
+                    objectFit: 'cover',
+                    border: '1.5px solid #f59e0b',
+                    boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
                   }}
-                >
-                  <Sparkles size={20} />
-                </div>
+                />
                 <div>
                   <h2 id="demo-modal-title" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
                     Demo Access · Gmail OTP
@@ -2041,26 +2083,30 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Simulated preview if SMTP app password not yet configured */}
-                {demoOtpPreview && (
-                  <div
-                    style={{
-                      backgroundColor: 'rgba(2, 132, 199, 0.12)',
-                      border: '1px dashed rgba(56, 189, 248, 0.4)',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      fontSize: '0.78rem',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <span style={{ color: '#94a3b8' }}>Demo OTP Preview:</span>
-                    <strong style={{ color: '#38bdf8', letterSpacing: '0.15em', fontSize: '0.95rem' }}>
-                      {demoOtpPreview}
+                {/* Secure Delivery Notice (Passcode sent to user's Gmail) */}
+                <div
+                  style={{
+                    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    color: '#86efac',
+                  }}
+                >
+                  <CheckCircle size={16} color="#10b981" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#ecfdf5', display: 'block', marginBottom: '2px' }}>
+                      Passcode sent directly to your Gmail inbox!
                     </strong>
+                    <span style={{ color: '#a7f3d0', fontSize: '0.74rem', lineHeight: '1.4' }}>
+                      Please open your Gmail ({demoEmail}), find the 6-digit passcode in your Inbox (or Spam/Promotions folder), and enter it below.
+                    </span>
                   </div>
-                )}
+                </div>
 
                 {/* OTP Input */}
                 <div>
