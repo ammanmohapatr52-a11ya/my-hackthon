@@ -41,6 +41,8 @@ import {
 } from '../security/otpService';
 import { MarvelBackground3D } from '../components/ui/MarvelBackground3D';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
+import { BackendConfigModal } from '../components/ui/BackendConfigModal';
+import { getBackendBaseUrl, isBackendConfigured, isLocalhost } from '../config/apiConfig';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -81,6 +83,8 @@ export const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isBackendModalOpen, setIsBackendModalOpen] = useState(false);
+  const [backendUrl, setBackendUrl] = useState<string>(() => getBackendBaseUrl());
 
   // Demo Access Modal State (Gmail + 1-Minute OTP, strictly single-use per Gmail)
   const [demoModalOpen, setDemoModalOpen] = useState(false);
@@ -179,6 +183,12 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
+      if (!isLocalhost() && !isBackendConfigured()) {
+        setIsBackendModalOpen(true);
+        setError('Please connect your Render backend URL so the server can dispatch the live OTP to your Gmail.');
+        return;
+      }
+
       setIsLoading(true);
       const otpRes = await sendRegistrationOtp({
         email: regEmail,
@@ -193,17 +203,17 @@ export const LoginPage: React.FC = () => {
       }
 
       setIsLiveDelivery(Boolean(otpRes.isLiveDelivery));
-      setLiveOtpPreview(null);
+      setLiveOtpPreview(otpRes.isLiveDelivery ? null : (otpRes.otpPreview || null));
       setOtpRemainingSeconds(300);
       setResendCooldown(60);
       setStep('otp');
 
-      if (otpRes.success) {
+      if (otpRes.isLiveDelivery) {
         setSuccessMsg(`⚡ Verification code dispatched directly to your Gmail: ${regEmail}! Please check your Inbox.`);
         setError(null);
       } else {
-        setError(otpRes.error || `Could not deliver verification code to ${regEmail}. Please check your email and try again.`);
         setSuccessMsg(null);
+        setError(`⚠️ Email dispatch notice: ${otpRes.message || 'Render backend is unavailable or starting up.'}`);
       }
       return;
     }
@@ -213,6 +223,12 @@ export const LoginPage: React.FC = () => {
       const loginEmail = (email || username).trim().toLowerCase();
       if (!loginEmail || !loginEmail.includes('@')) {
         setError('Please enter a valid Gmail / Email address to receive your login code');
+        return;
+      }
+
+      if (!isLocalhost() && !isBackendConfigured()) {
+        setIsBackendModalOpen(true);
+        setError('Please connect your Render backend URL so the server can dispatch the live OTP to your Gmail.');
         return;
       }
 
@@ -226,17 +242,17 @@ export const LoginPage: React.FC = () => {
       }
 
       setIsLiveDelivery(Boolean(otpRes.isLiveDelivery));
-      setLiveOtpPreview(null);
+      setLiveOtpPreview(otpRes.isLiveDelivery ? null : (otpRes.otpPreview || null));
       setOtpRemainingSeconds(300);
       setResendCooldown(60);
       setStep('otp');
 
-      if (otpRes.success) {
+      if (otpRes.isLiveDelivery) {
         setSuccessMsg(`⚡ Login code dispatched directly to your Gmail: ${loginEmail}! Check your inbox.`);
         setError(null);
       } else {
-        setError(otpRes.error || `Could not deliver login code to ${loginEmail}. Please try again.`);
         setSuccessMsg(null);
+        setError(`⚠️ Email dispatch notice: ${otpRes.message || 'Render backend is unavailable or starting up.'}`);
       }
       return;
     }
@@ -394,6 +410,12 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
+    if (!isLocalhost() && !isBackendConfigured()) {
+      setIsBackendModalOpen(true);
+      setDemoError('Please connect your Render backend URL so the 1-minute demo passcode can be dispatched.');
+      return;
+    }
+
     setIsDemoSubmitting(true);
     try {
       const res = await sendDemoOtp({ email: clean });
@@ -406,7 +428,14 @@ export const LoginPage: React.FC = () => {
 
       setDemoStep('otp');
       setDemoTimer(OTP_DEMO_VALIDITY_SECONDS);
-      setDemoSuccess(`⚡ 6-digit passcode dispatched directly to your Gmail: ${clean}! Valid for 60 seconds.`);
+      if (res.isLiveDelivery) {
+        setDemoSuccess(`⚡ 6-digit passcode dispatched directly to your Gmail: ${clean}! Valid for 60 seconds.`);
+      } else {
+        setDemoSuccess(`Demo passcode active. (Live delivery note: ${res.message || 'Render backend is awake or warming up.'}).`);
+        if (res.otpPreview) {
+          setDemoOtp(res.otpPreview);
+        }
+      }
     } catch (err: any) {
       setIsDemoSubmitting(false);
       setDemoError('Network error connecting to verification service.');
@@ -560,6 +589,39 @@ export const LoginPage: React.FC = () => {
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          {/* Render Backend Connection Status & Config Button */}
+          <button
+            type="button"
+            id="login-backend-config-button"
+            onClick={() => setIsBackendModalOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              background: backendUrl ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.15)',
+              border: `1px solid ${backendUrl ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.45)'}`,
+              color: backendUrl ? '#10b981' : '#f59e0b',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              padding: '0.35rem 0.75rem',
+              borderRadius: '9999px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            title={backendUrl ? `Backend active: ${backendUrl} (Click to manage)` : 'Connect Render backend URL to enable live Gmail OTP'}
+          >
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: backendUrl ? '#10b981' : '#f59e0b',
+                boxShadow: backendUrl ? '0 0 8px #10b981' : '0 0 8px #f59e0b',
+              }}
+            />
+            <span>{backendUrl ? (isLocalhost() ? 'Backend (Local)' : 'Render Connected') : 'Connect Backend'}</span>
+          </button>
+
           {/* Quick Demo Button (Opens Gmail + 1-Min OTP modal) */}
           <button
             type="button"
@@ -2108,6 +2170,18 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Backend Server Configuration Modal */}
+      <BackendConfigModal
+        isOpen={isBackendModalOpen}
+        onClose={() => {
+          setIsBackendModalOpen(false);
+          setBackendUrl(getBackendBaseUrl());
+        }}
+        onConnected={() => {
+          setBackendUrl(getBackendBaseUrl());
+        }}
+      />
 
     </div>
   );

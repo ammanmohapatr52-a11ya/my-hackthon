@@ -4,6 +4,8 @@
  * and isolated administrative authentication.
  */
 
+import { getApiUrl } from '../config/apiConfig';
+
 export interface AdminSession {
   token: string;
   adminId: string;
@@ -473,7 +475,7 @@ export const unblockIp = (ipToUnblock: string): void => {
 
   // Sync with backend API if online
   try {
-    fetch('http://127.0.0.1:8000/api/v1/admin/firewall/unblock-ip', {
+    fetch(getApiUrl('/api/v1/admin/firewall/unblock-ip'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip: ipToUnblock }),
@@ -500,7 +502,7 @@ export const blockIp = (ipToBlock: string, reason = 'Quarantined by Administrato
 
   // Sync with backend API if online
   try {
-    fetch('http://127.0.0.1:8000/api/v1/admin/firewall/block-ip', {
+    fetch(getApiUrl('/api/v1/admin/firewall/block-ip'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip: ipToBlock }),

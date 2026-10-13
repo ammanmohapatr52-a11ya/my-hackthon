@@ -10,6 +10,7 @@ import { fastClassifyQuery, type RouterResult } from './prompts/router';
 import { retrieveFactsForQuery, formatFactsBlock, getLocalizedFact, type VerifiedFact } from './facts/factPack';
 import { getSetting } from '../storage/settingsStore';
 import { solveMathProblem } from '../math/solve';
+import { getApiUrl } from '../config/apiConfig';
 
 export const DEFAULT_OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
 export const DEFAULT_OPENROUTER_MODEL = 'liquid/lfm-2.5-2.6b:free';
@@ -439,9 +440,9 @@ export async function askIntelligentTutor(
   let rawOutput = '';
 
   try {
-    // Attempt 1: Call Python FastAPI AI backend (http://localhost:8000/api/v1/ask)
+    // Attempt 1: Call Python FastAPI AI backend
     try {
-      const pyRes = await fetch('http://localhost:8000/api/v1/ask', {
+      const pyRes = await fetch(getApiUrl('/api/v1/ask'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -764,7 +765,7 @@ export async function developQuestion(
 
   // Try calling Python backend if available
   try {
-    const res = await fetch('http://localhost:8000/api/v1/develop-question', {
+    const res = await fetch(getApiUrl('/api/v1/develop-question'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: cleanQ, language, level }),
@@ -888,7 +889,7 @@ export async function reResearchQuestion(params: ReResearchParams): Promise<GKAn
 
   // Attempt 1: Call Python backend /api/v1/re-research
   try {
-    const res = await fetch('http://localhost:8000/api/v1/re-research', {
+    const res = await fetch(getApiUrl('/api/v1/re-research'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

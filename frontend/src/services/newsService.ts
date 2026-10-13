@@ -90,7 +90,9 @@ export const SUPPORTED_AUDIO_LANGUAGES: AudioLanguageOption[] = [
   { code: 'de', label: 'Deutsch (German)', locale: 'de-DE', flag: '🇩🇪' },
 ];
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
+import { getApiUrl } from '../config/apiConfig';
+
+const getNewsApiUrl = (endpoint: string) => getApiUrl(`/api/v1/news/${endpoint.replace(/^\/+/, '')}`);
 const BOOKMARKS_STORAGE_KEY = 'neurobridge_news_bookmarks';
 
 // Fallback high-impact dataset with full multilingual support
@@ -384,7 +386,8 @@ export function getFactLocalized(fact: TodayFact, lang: string): { headline: str
  */
 export async function getNewsFeed(category?: string): Promise<NewsFeedResponse> {
   try {
-    const url = new URL(`${API_BASE}/news/feed`);
+    const feedEndpoint = getNewsApiUrl('feed');
+    const url = new URL(feedEndpoint, window.location.origin);
     if (category && category !== 'all') {
       url.searchParams.set('category', category);
     }
@@ -426,7 +429,7 @@ export async function getNewsFeed(category?: string): Promise<NewsFeedResponse> 
  */
 export async function syncLiveWorldNews(): Promise<{ status: string; message: string; total_articles: number }> {
   try {
-    const res = await fetch(`${API_BASE}/news/refresh`, {
+    const res = await fetch(getNewsApiUrl('refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });

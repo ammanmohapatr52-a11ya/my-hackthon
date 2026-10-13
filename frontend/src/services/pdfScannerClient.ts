@@ -1,3 +1,5 @@
+import { getApiUrl } from '../config/apiConfig';
+
 export interface ScannedPage {
   page_number: number;
   text: string;
@@ -47,9 +49,8 @@ const MATH_PATTERNS = [
  */
 export async function scanPdfDocument(file: File): Promise<ScanResult> {
   const candidateUrls = [
+    getApiUrl('/api/v1/pdf/scan'),
     '/api/v1/pdf/scan',
-    'http://127.0.0.1:8000/api/v1/pdf/scan',
-    'http://localhost:8000/api/v1/pdf/scan',
   ];
 
   let lastError: Error | null = null;

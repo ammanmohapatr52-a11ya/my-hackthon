@@ -5,6 +5,7 @@
  */
 
 import { authenticateOrRegisterUser, type UserRecord } from '../services/userService';
+import { getApiUrl, getBackendBaseUrl, isBackendConfigured } from '../config/apiConfig';
 
 export interface PendingRegistration {
   email: string;
@@ -175,11 +176,16 @@ export const sendRegistrationOtp = async (params: {
   let smtpStatusInfo: any = null;
 
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/auth/send-otp', {
+    const targetUrl = getApiUrl('/api/v1/auth/send-otp');
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), 35000);
+    const res = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: cleanEmail, username: cleanUsername, otp, mode: 'registration' }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutTimer);
     if (res.ok) {
       const data = await res.json();
       if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
@@ -190,9 +196,15 @@ export const sendRegistrationOtp = async (params: {
         smtpStatusInfo = data.smtp_status;
         backendMessage = data.message;
       }
+    } else {
+      backendMessage = `Backend server returned status ${res.status}`;
     }
   } catch (err: any) {
-    backendMessage = 'Backend service offline or unreachable at http://127.0.0.1:8000';
+    const isTimeout = err?.name === 'AbortError';
+    const backendBase = getBackendBaseUrl();
+    backendMessage = isTimeout
+      ? `Backend request timed out. If Render is waking from sleep, please wait 30 seconds and retry.`
+      : `Backend service unreachable at ${backendBase || 'Render'}. Ensure Render backend is running.`;
   }
 
   // Store dispatched notification so user can inspect history
@@ -277,11 +289,16 @@ export const sendLoginOtp = async (params: {
   let smtpStatusInfo: any = null;
 
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/auth/send-otp', {
+    const targetUrl = getApiUrl('/api/v1/auth/send-otp');
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), 35000);
+    const res = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: cleanEmail, username: cleanUsername, otp, mode: 'login' }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutTimer);
     if (res.ok) {
       const data = await res.json();
       if (data.is_live_delivery || data.channel === 'live_brevo_api' || data.channel === 'live_gmail_smtp') {
@@ -292,9 +309,15 @@ export const sendLoginOtp = async (params: {
         smtpStatusInfo = data.smtp_status;
         backendMessage = data.message;
       }
+    } else {
+      backendMessage = `Backend server returned status ${res.status}`;
     }
-  } catch {
-    backendMessage = 'Backend server offline at http://127.0.0.1:8000';
+  } catch (err: any) {
+    const isTimeout = err?.name === 'AbortError';
+    const backendBase = getBackendBaseUrl();
+    backendMessage = isTimeout
+      ? `Backend request timed out. If Render is waking from sleep, please wait 30 seconds and retry.`
+      : `Backend service unreachable at ${backendBase || 'Render'}. Ensure Render backend is running.`;
   }
 
   const notification: DispatchedOtpNotification = {
@@ -447,7 +470,10 @@ export const sendDemoOtp = async (params: {
   let smtpStatusInfo: any = null;
 
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/auth/send-otp', {
+    const targetUrl = getApiUrl('/api/v1/auth/send-otp');
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), 35000);
+    const res = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -457,7 +483,9 @@ export const sendDemoOtp = async (params: {
         mode: 'demo',
         expires_in_seconds: 60,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutTimer);
     if (res.ok) {
       const data = await res.json();
       if (data.status === 'error' && data.already_used) {
@@ -471,9 +499,15 @@ export const sendDemoOtp = async (params: {
         smtpStatusInfo = data.smtp_status;
         backendMessage = data.message;
       }
+    } else {
+      backendMessage = `Backend server returned status ${res.status}`;
     }
-  } catch {
-    backendMessage = 'Backend server offline at http://127.0.0.1:8000 (demo code available via preview notification)';
+  } catch (err: any) {
+    const isTimeout = err?.name === 'AbortError';
+    const backendBase = getBackendBaseUrl();
+    backendMessage = isTimeout
+      ? `Backend request timed out. If Render is waking from sleep, please wait 30 seconds and retry.`
+      : `Backend service unreachable at ${backendBase || 'Render'}. Ensure Render backend is running.`;
   }
 
   const notification: DispatchedOtpNotification = {
@@ -664,7 +698,7 @@ export const verifyOtpAndRegister = (
  */
 export const getSmtpStatus = async (): Promise<SmtpConfigStatus> => {
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/auth/smtp-status');
+    const res = await fetch(getApiUrl('/api/v1/auth/smtp-status'));
     if (res.ok) return await res.json();
     return { configured: false };
   } catch {
@@ -683,7 +717,7 @@ export const saveSmtpConfig = async (params: {
   fromName?: string;
 }): Promise<{ success: boolean; message?: string; error?: string }> => {
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/auth/smtp-config', {
+    const res = await fetch(getApiUrl('/api/v1/auth/smtp-config'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -716,7 +750,7 @@ export const testSmtpConnection = async (params: {
   fromName?: string;
 }): Promise<{ success: boolean; message?: string; error?: string; details?: string; hint?: string }> => {
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/auth/smtp-test', {
+    const res = await fetch(getApiUrl('/api/v1/auth/smtp-test'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -733,9 +767,10 @@ export const testSmtpConnection = async (params: {
     }
     return await res.json();
   } catch (err: any) {
+    const base = getBackendBaseUrl();
     return {
       success: false,
-      error: 'Cannot connect to backend server (http://127.0.0.1:8000). Please make sure the Python backend is running.',
+      error: `Cannot connect to backend server (${base || 'Render'}). Please make sure the backend is active.`,
     };
   }
 };
