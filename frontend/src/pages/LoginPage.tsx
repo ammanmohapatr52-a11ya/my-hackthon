@@ -692,10 +692,10 @@ export const LoginPage: React.FC = () => {
             boxShadow: '0 0 12px rgba(56, 189, 248, 0.25)',
             transition: 'all 0.2s ease',
           }}
-          title="Download & Install App on Mobile & Laptop — Offline Ready"
+          title="Download & Install Mobile App (.apk) or Laptop App — Offline Ready"
         >
           <Download size={14} color="#38bdf8" />
-          <span>Download App</span>
+          <span>📱 Mobile App (.apk)</span>
         </button>
 
         {/* Quick Demo Button (Opens Gmail + 1-Min OTP modal) */}
@@ -1384,7 +1384,7 @@ export const LoginPage: React.FC = () => {
                 }}
               >
                 <Download size={15} color="#38bdf8" />
-                <span>📥 Download / Install App (Mobile & Laptop)</span>
+                <span>📥 Download Mobile App (.apk) / Install</span>
               </button>
 
               {/* Switch back link */}
@@ -2278,6 +2278,32 @@ export const LoginPage: React.FC = () => {
               >
                 <Zap size={15} color="#f59e0b" />
                 <span>⚡ Run Project in Offline Mode</span>
+              </button>
+
+              {/* Direct Mobile App Download Button (.apk) */}
+              <button
+                type="button"
+                id="login-bottom-download-apk-btn"
+                onClick={() => setDownloadModalOpen(true)}
+                style={{
+                  marginTop: '0.45rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.15) 100%)',
+                  border: '1px solid rgba(16, 185, 129, 0.55)',
+                  color: '#34d399',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  padding: '7px 16px',
+                  borderRadius: '9999px',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 14px rgba(16, 185, 129, 0.25)',
+                  transition: 'all 0.18s ease',
+                }}
+              >
+                <Download size={15} color="#34d399" />
+                <span>📥 Download Mobile App (.apk)</span>
               </button>
 
               {/* Security Shield notice */}

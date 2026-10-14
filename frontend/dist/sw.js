@@ -90,6 +90,10 @@ self.addEventListener('fetch', (event) => {
       })
     );
     return;
+  // File downloads -> Network-only (stream directly through browser download manager)
+  if (url.pathname.startsWith('/downloads/')) {
+    event.respondWith(fetch(request));
+    return;
   }
 
   // Static Assets (CSS, JS, Fonts, Images) -> Cache-First with Network Fallback & Cache Refresh

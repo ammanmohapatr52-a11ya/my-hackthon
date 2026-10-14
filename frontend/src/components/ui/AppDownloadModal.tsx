@@ -11,6 +11,7 @@ import {
   ArrowRight,
   ShieldCheck,
   HardDriveDownload,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   canPromptPwaInstall,
@@ -19,6 +20,8 @@ import {
   detectDevicePlatform,
   preCacheAllOfflineAssets,
   downloadOfflinePortableApp,
+  downloadAndroidApk,
+  isInAppBrowser,
 } from '../../services/pwaDownloadService';
 
 interface AppDownloadModalProps {
@@ -38,6 +41,7 @@ export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onCl
   const [showMobileHint, setShowMobileHint] = useState<boolean>(false);
 
   const platform = detectDevicePlatform();
+  const inApp = isInAppBrowser();
 
   useEffect(() => {
     if (platform === 'android' || platform === 'ios') {
@@ -478,6 +482,56 @@ export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onCl
                   <Smartphone size={32} color="#f59e0b" />
                 </div>
 
+                {/* In-App Browser Warning (e.g. WhatsApp, Instagram, Telegram) */}
+                {inApp && (
+                  <div
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1.5px solid rgba(239, 68, 68, 0.6)',
+                      borderRadius: '12px',
+                      padding: '10px 14px',
+                      color: '#fecaca',
+                      fontSize: '0.82rem',
+                      lineHeight: '1.5',
+                      boxShadow: '0 0 16px rgba(239, 68, 68, 0.25)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                      <AlertTriangle size={15} />
+                      <span>WhatsApp / In-App Browser Detected</span>
+                    </div>
+                    In-app browsers block direct web installations.
+                    <br />
+                    👉 <strong>Open in Chrome:</strong> Upar right corner me <strong>3 dots (⋮)</strong> tap karke <strong>'Open in Chrome'</strong> chunein, ya direct neeche diye gaye green button se <strong>Android APK download</strong> karein!
+                  </div>
+                )}
+
+                {/* GUARANTEED DIRECT ANDROID APK DOWNLOAD (Mobile Phone File) */}
+                <a
+                  href="/downloads/Neurobridge-App.apk"
+                  download="Neurobridge-App.apk"
+                  id="btn-download-android-apk"
+                  style={{
+                    textDecoration: 'none',
+                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                    borderRadius: '12px',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.94rem',
+                    padding: '0.85rem 1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 24px rgba(16, 185, 129, 0.55)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Download size={19} />
+                  <span>📥 Download Android Mobile App (.apk) (1.6 MB)</span>
+                </a>
+
                 {/* Always-Visible Primary Mobile Install Button */}
                 <button
                   type="button"
@@ -496,19 +550,19 @@ export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onCl
                     borderRadius: '12px',
                     color: '#ffffff',
                     fontWeight: 800,
-                    fontSize: '0.94rem',
-                    padding: '0.85rem 1.25rem',
+                    fontSize: '0.92rem',
+                    padding: '0.8rem 1.25rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     cursor: 'pointer',
-                    boxShadow: '0 0 22px rgba(245, 158, 11, 0.55)',
+                    boxShadow: '0 0 20px rgba(245, 158, 11, 0.45)',
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <Download size={18} />
-                  <span>📱 Tap to Install App on Phone Home Screen</span>
+                  <Smartphone size={18} />
+                  <span>📱 Add to Phone Home Screen (Instant App)</span>
                 </button>
 
                 {/* Interactive Phone Guidance Callout */}

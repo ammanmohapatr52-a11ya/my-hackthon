@@ -4,6 +4,7 @@ import {
   canPromptPwaInstall,
   triggerPwaInstallPrompt,
   isRunningInStandaloneMode,
+  isInAppBrowser,
 } from '../../services/pwaDownloadService';
 import { AppDownloadModal } from './AppDownloadModal';
 
@@ -11,6 +12,7 @@ export const MobileInstallBanner: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [canInstall, setCanInstall] = useState(() => canPromptPwaInstall());
+  const inApp = isInAppBrowser();
 
   useEffect(() => {
     // Check if already in standalone app mode
@@ -107,7 +109,7 @@ export const MobileInstallBanner: React.FC = () => {
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#ffffff' }}>Install App</span>
+              <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#ffffff' }}>Mobile App</span>
               <span
                 style={{
                   fontSize: '0.62rem',
@@ -119,24 +121,50 @@ export const MobileInstallBanner: React.FC = () => {
                   border: '1px solid rgba(16, 185, 129, 0.4)',
                 }}
               >
-                100% Offline
+                Offline Ready
               </span>
             </div>
             <div
               style={{
                 fontSize: '0.72rem',
-                color: '#94a3b8',
+                color: inApp ? '#f87171' : '#94a3b8',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
               }}
             >
-              Add to Home Screen · Zero Internet
+              {inApp ? 'WhatsApp detected · Tap APK to download' : 'Direct APK download or Home Screen'}
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+          {/* Direct APK Download Button */}
+          <a
+            href="/downloads/Neurobridge-App.apk"
+            download="Neurobridge-App.apk"
+            id="mobile-banner-apk-btn"
+            style={{
+              background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+              borderRadius: '9999px',
+              color: '#ffffff',
+              textDecoration: 'none',
+              fontWeight: 800,
+              fontSize: '0.76rem',
+              padding: '6px 11px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+              boxShadow: '0 0 14px rgba(16, 185, 129, 0.45)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Download size={13} />
+            <span>APK</span>
+          </a>
+
+          {/* Web App Install / Instructions Modal Button */}
           <button
             type="button"
             id="mobile-banner-install-btn"
@@ -147,17 +175,17 @@ export const MobileInstallBanner: React.FC = () => {
               borderRadius: '9999px',
               color: '#ffffff',
               fontWeight: 800,
-              fontSize: '0.78rem',
-              padding: '6px 14px',
+              fontSize: '0.76rem',
+              padding: '6px 11px',
               display: 'flex',
               alignItems: 'center',
-              gap: '5px',
+              gap: '4px',
               cursor: 'pointer',
               boxShadow: '0 0 14px rgba(56, 189, 248, 0.45)',
               whiteSpace: 'nowrap',
             }}
           >
-            <Download size={13} />
+            <Smartphone size={13} />
             <span>Install</span>
           </button>
 

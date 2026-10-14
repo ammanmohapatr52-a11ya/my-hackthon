@@ -445,37 +445,90 @@ export const downloadOfflinePortableApp = (): void => {
 </html>`;
 
   try {
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Neurobridge_Offline_Portable_App.html';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
+    // Try direct link first if hosted
+    const directLink = document.createElement('a');
+    directLink.href = '/downloads/Neurobridge-Offline-App.html';
+    directLink.download = 'Neurobridge-Offline-App.html';
+    document.body.appendChild(directLink);
+    directLink.click();
     setTimeout(() => {
       try {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        document.body.removeChild(directLink);
       } catch {}
-    }, 2500);
-  } catch (err) {
-    // Mobile fallback with encoded data URI
+    }, 1000);
+  } catch {
+    // Fallback to inline blob
     try {
-      const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = dataUri;
-      a.download = 'Neurobridge_Offline_Portable_App.html';
+      a.href = url;
+      a.download = 'Neurobridge-Offline-App.html';
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
       a.click();
       setTimeout(() => {
         try {
           document.body.removeChild(a);
+          URL.revokeObjectURL(url);
         } catch {}
-      }, 1000);
-    } catch {
-      window.open('about:blank', '_blank')?.document.write(htmlContent);
+      }, 2500);
+    } catch (err) {
+      // Mobile fallback with encoded data URI
+      try {
+        const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
+        const a = document.createElement('a');
+        a.href = dataUri;
+        a.download = 'Neurobridge-Offline-App.html';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try {
+            document.body.removeChild(a);
+          } catch {}
+        }, 1000);
+      } catch {
+        window.open('about:blank', '_blank')?.document.write(htmlContent);
+      }
     }
   }
+};
+
+/**
+ * Triggers direct download of the standalone Android Mobile App Package (.apk).
+ * Saves directly into the mobile device's Download manager tray.
+ */
+export const downloadAndroidApk = (): void => {
+  const link = document.createElement('a');
+  link.href = '/downloads/Neurobridge-App.apk';
+  link.download = 'Neurobridge-App.apk';
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    try {
+      document.body.removeChild(link);
+    } catch {}
+  }, 1500);
+};
+
+/**
+ * Detects if the web page is opened inside a restricted in-app WebView
+ * such as WhatsApp, Instagram, Facebook, Telegram, etc., where PWA install is blocked.
+ */
+export const isInAppBrowser = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const ua = (navigator.userAgent || navigator.vendor || (window as any).opera || '').toLowerCase();
+  return (
+    ua.includes('fban') ||
+    ua.includes('fbav') ||
+    ua.includes('instagram') ||
+    ua.includes('whatsapp') ||
+    ua.includes('telegram') ||
+    ua.includes('micromessenger') ||
+    ua.includes('line') ||
+    ua.includes('snapchat')
+  );
 };
