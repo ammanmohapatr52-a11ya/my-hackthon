@@ -18,7 +18,7 @@ export const isLocalhost = (): boolean => {
 };
 
 export const getBackendBaseUrl = (): string => {
-  // 1. Build-time Vite Environment Variable (Set in Vercel project Settings -> Environment Variables)
+  // 1. Build-time Vite Environment Variable (Set in Vercel project Settings or .env)
   const envUrl = (
     (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL)) ||
     ''
@@ -28,22 +28,7 @@ export const getBackendBaseUrl = (): string => {
     return envUrl.replace(/\/+$/, '');
   }
 
-  // 2. Localhost development fallback (always prioritize local FastAPI when on localhost)
-  if (isLocalhost()) {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const stored = localStorage.getItem(STORAGE_KEY_BACKEND_URL);
-        if (stored && stored.trim() && (stored.includes('localhost') || stored.includes('127.0.0.1'))) {
-          return stored.trim().replace(/\/+$/, '');
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return 'http://127.0.0.1:8000';
-  }
-
-  // 3. Runtime override saved in localStorage for custom deployments
+  // 2. Runtime override saved in localStorage for custom deployments
   try {
     if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem(STORAGE_KEY_BACKEND_URL);
@@ -55,7 +40,7 @@ export const getBackendBaseUrl = (): string => {
     // ignore storage access errors
   }
 
-  // 4. Built-in Production backend on Render (used by all devices, static site, and direct access):
+  // 3. Built-in Production backend on Render (default live backend for all environments):
   return DEFAULT_RENDER_BACKEND;
 };
 

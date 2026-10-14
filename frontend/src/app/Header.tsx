@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PrivacyBadge } from './PrivacyBadge';
 import { LanguageSelect } from './LanguageSelect';
 import { VoiceCommandModal } from '../features/voice-command/VoiceCommandModal';
-import { Mic, Menu, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Mic, Menu, LogIn, LogOut, User as UserIcon, Globe, Zap, RefreshCw, CheckCircle } from 'lucide-react';
 import { useAccessibility } from '../accessibility/AccessibilityContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
 import { logoutAuthUser } from '../services/userService';
+import { getAppMode, setAppMode, type AppMode } from '../services/offlineService';
+import { getPendingSyncCount, syncOfflineQueue } from '../services/offlineSyncService';
 
 interface HeaderProps {
   onToggleMobileNav?: () => void;
@@ -18,8 +20,51 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = f
   const navigate = useNavigate();
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
+  const [appMode, setAppModeState] = useState<AppMode>(() => getAppMode());
+  const [pendingSync, setPendingSync] = useState<number>(() => getPendingSyncCount());
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncToast, setSyncToast] = useState<string | null>(null);
   const { profile } = useAccessibility();
   const { t } = useLanguage();
+
+  useEffect(() => {
+    const handleMode = (e: any) => {
+      if (e.detail?.mode) setAppModeState(e.detail.mode);
+      else setAppModeState(getAppMode());
+    };
+    const handleSyncQueue = (e: any) => {
+      setPendingSync(e.detail?.count ?? getPendingSyncCount());
+    };
+    const handleSyncDone = (e: any) => {
+      setPendingSync(0);
+      setSyncToast(`Synced ${e.detail?.count || ''} items`);
+      setTimeout(() => setSyncToast(null), 3000);
+    };
+
+    window.addEventListener('neurobridge_mode_changed', handleMode);
+    window.addEventListener('neurobridge_sync_queue_changed', handleSyncQueue);
+    window.addEventListener('neurobridge_sync_completed', handleSyncDone);
+    return () => {
+      window.removeEventListener('neurobridge_mode_changed', handleMode);
+      window.removeEventListener('neurobridge_sync_queue_changed', handleSyncQueue);
+      window.removeEventListener('neurobridge_sync_completed', handleSyncDone);
+    };
+  }, []);
+
+  const handleManualSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    const res = await syncOfflineQueue();
+    setIsSyncing(false);
+    setSyncToast(res.message);
+    setTimeout(() => setSyncToast(null), 3500);
+  };
+
+  const handleToggleMode = () => {
+    const nextMode = appMode === 'offline' ? 'online' : 'offline';
+    setAppMode(nextMode);
+    setAppModeState(nextMode);
+  };
 
   useEffect(() => {
     const syncUser = () => {
@@ -134,6 +179,91 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = f
           <div className="hide-on-mobile">
             <PrivacyBadge />
           </div>
+
+          {/* Mode Switch Toggle Pill */}
+          <button
+            type="button"
+            id="header-mode-toggle-btn"
+            onClick={handleToggleMode}
+            title={appMode === 'offline' ? 'Offline Mode Active (Click to switch to Online)' : 'Online Mode Active (Click to switch to Offline)'}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 11px',
+              borderRadius: '9999px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: appMode === 'offline' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(56, 189, 248, 0.12)',
+              color: appMode === 'offline' ? '#f59e0b' : '#38bdf8',
+              border: appMode === 'offline' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(56, 189, 248, 0.35)',
+              boxShadow: appMode === 'offline' ? '0 0 12px rgba(245, 158, 11, 0.3)' : '0 0 10px rgba(56, 189, 248, 0.15)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {appMode === 'offline' ? (
+              <>
+                <Zap size={13} color="#f59e0b" />
+                <span>Offline</span>
+              </>
+            ) : (
+              <>
+                <Globe size={13} color="#38bdf8" />
+                <span>Online</span>
+              </>
+            )}
+          </button>
+
+          {/* Sync on Reconnect Action Button */}
+          {pendingSync > 0 && (
+            <button
+              type="button"
+              id="header-sync-btn"
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              title={`Sync ${pendingSync} pending offline item(s) to Cloud Backend`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 10px',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: isSyncing ? 'wait' : 'pointer',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.45)',
+                boxShadow: '0 0 10px rgba(16, 185, 129, 0.25)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <RefreshCw size={12} style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }} />
+              <span>{isSyncing ? 'Syncing...' : `Sync (${pendingSync})`}</span>
+            </button>
+          )}
+
+          {/* Sync notification toast pill */}
+          {syncToast && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                background: 'rgba(16, 185, 129, 0.2)',
+                color: '#34d399',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+              }}
+            >
+              <CheckCircle size={11} />
+              <span>{syncToast}</span>
+            </div>
+          )}
 
           <LanguageSelect />
 

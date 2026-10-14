@@ -19,6 +19,10 @@ import {
   CheckCircle,
   LogOut,
   Clock,
+  Globe,
+  Zap,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import {
   authenticateOrRegisterUser,
@@ -26,6 +30,13 @@ import {
   logoutAuthUser,
   type AuthSessionUser,
 } from '../services/userService';
+import {
+  getAppMode,
+  setAppMode,
+  loginOffline,
+  isBrowserNetworkOnline,
+  type AppMode,
+} from '../services/offlineService';
 import {
   sendRegistrationOtp,
   sendLoginOtp,
@@ -48,6 +59,11 @@ export const LoginPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [step, setStep] = useState<'auth' | 'otp'>('auth');
   const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+
+  // Dual Operating Mode: 'online' | 'offline'
+  const [appMode, setAppModeState] = useState<AppMode>(() => getAppMode());
+  const [isNetworkOnline, setIsNetworkOnline] = useState<boolean>(() => isBrowserNetworkOnline());
+  const [offlineName, setOfflineName] = useState<string>('Offline Scholar');
 
   // 3D Mouse Parallax Tilt state
   const [mouseTilt, setMouseTilt] = useState({ x: 0, y: 0 });
@@ -119,6 +135,63 @@ export const LoginPage: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [step]);
+
+  // Reactive listener for application mode, network connectivity, and session changes
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setActiveUser(getCurrentAuthUser());
+    };
+    const handleModeChange = (e: any) => {
+      if (e.detail?.mode) {
+        setAppModeState(e.detail.mode);
+      }
+    };
+    const handleOnline = () => setIsNetworkOnline(true);
+    const handleOffline = () => setIsNetworkOnline(false);
+
+    window.addEventListener('neurobridge_auth_changed', handleAuthChange);
+    window.addEventListener('neurobridge_mode_changed', handleModeChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('neurobridge_auth_changed', handleAuthChange);
+      window.removeEventListener('neurobridge_mode_changed', handleModeChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleToggleMode = (targetMode: AppMode) => {
+    setAppModeState(targetMode);
+    setAppMode(targetMode);
+    setError(null);
+    setSuccessMsg(
+      targetMode === 'offline'
+        ? '⚡ Offline Mode activated: 100% In-Browser features ready without internet or server.'
+        : '🌐 Online Mode activated: Connected to Cloud API & live authentication.'
+    );
+  };
+
+  const handleOfflineLaunch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccessMsg('⚡ Initializing Offline Workspace...');
+
+    setTimeout(() => {
+      const studentName = (offlineName || username || 'Offline Scholar').trim();
+      const user = loginOffline(studentName);
+      sessionStorage.setItem('just_logged_in_name', user.name || studentName);
+      setSuccessMsg(`⚡ Welcome, ${user.name}! Offline mode initialized.`);
+      setIsLoading(false);
+
+      setTimeout(() => {
+        const dest = (location.state as any)?.from || '/';
+        navigate(dest, { replace: true });
+      }, 400);
+    }, 450);
+  };
 
   // 54 tick marks around the dial ring with bright neon luminescence
   const TOTAL_TICKS = 54;
@@ -532,9 +605,70 @@ export const LoginPage: React.FC = () => {
           right: '1.5rem',
           display: 'flex',
           alignItems: 'center',
-          zIndex: 20,
+          gap: '0.6rem',
+          zIndex: 40,
         }}
       >
+        {/* Top-Right Online/Offline Mode Toggle Switch */}
+        <div
+          role="radiogroup"
+          aria-label="Operating Mode Switch"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'rgba(8, 14, 28, 0.92)',
+            borderRadius: '9999px',
+            padding: '3px',
+            border: appMode === 'offline' ? '1.5px solid rgba(245, 158, 11, 0.65)' : '1.5px solid rgba(56, 189, 248, 0.6)',
+            boxShadow: appMode === 'offline' ? '0 0 14px rgba(245, 158, 11, 0.35)' : '0 0 12px rgba(56, 189, 248, 0.25)',
+          }}
+        >
+          <button
+            type="button"
+            id="top-mode-online-btn"
+            onClick={() => handleToggleMode('online')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 11px',
+              borderRadius: '9999px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '0.74rem',
+              background: appMode === 'online' ? 'rgba(56, 189, 248, 0.3)' : 'transparent',
+              color: appMode === 'online' ? '#38bdf8' : '#64748b',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Globe size={13} />
+            <span>Online</span>
+          </button>
+          <button
+            type="button"
+            id="top-mode-offline-btn"
+            onClick={() => handleToggleMode('offline')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 11px',
+              borderRadius: '9999px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '0.74rem',
+              background: appMode === 'offline' ? 'rgba(245, 158, 11, 0.35)' : 'transparent',
+              color: appMode === 'offline' ? '#f59e0b' : '#64748b',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Zap size={13} />
+            <span>⚡ Offline</span>
+          </button>
+        </div>
+
         {/* Quick Demo Button (Opens Gmail + 1-Min OTP modal) */}
         <button
           type="button"
@@ -834,19 +968,195 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Cyberpunk High-Tech Dual Mode Toggle Button (Online vs Offline) */}
+          <div
+            style={{
+              width: '100%',
+              marginBottom: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <div
+              role="radiogroup"
+              aria-label="Application Operating Mode"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                maxWidth: '290px',
+                background: 'rgba(8, 14, 28, 0.92)',
+                borderRadius: '9999px',
+                padding: '4px',
+                border:
+                  appMode === 'offline'
+                    ? '1.5px solid rgba(245, 158, 11, 0.65)'
+                    : '1.5px solid rgba(56, 189, 248, 0.65)',
+                boxShadow:
+                  appMode === 'offline'
+                    ? '0 0 20px rgba(245, 158, 11, 0.35), inset 0 0 10px rgba(245, 158, 11, 0.15)'
+                    : '0 0 20px rgba(56, 189, 248, 0.35), inset 0 0 10px rgba(56, 189, 248, 0.15)',
+                transition: 'all 0.25s ease',
+              }}
+            >
+              <button
+                type="button"
+                id="login-mode-online-toggle"
+                role="radio"
+                aria-checked={appMode === 'online'}
+                onClick={() => handleToggleMode('online')}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 10px',
+                  borderRadius: '9999px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: appMode === 'online' ? 800 : 600,
+                  fontSize: '0.76rem',
+                  letterSpacing: '0.04em',
+                  background:
+                    appMode === 'online'
+                      ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.75) 0%, rgba(56, 189, 248, 0.55) 100%)'
+                      : 'transparent',
+                  color: appMode === 'online' ? '#ffffff' : '#64748b',
+                  boxShadow: appMode === 'online' ? '0 0 12px rgba(56, 189, 248, 0.5)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Globe size={13} color={appMode === 'online' ? '#ffffff' : '#64748b'} />
+                <span>Online Cloud</span>
+              </button>
+
+              <button
+                type="button"
+                id="login-mode-offline-toggle"
+                role="radio"
+                aria-checked={appMode === 'offline'}
+                onClick={() => handleToggleMode('offline')}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 10px',
+                  borderRadius: '9999px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: appMode === 'offline' ? 800 : 600,
+                  fontSize: '0.76rem',
+                  letterSpacing: '0.04em',
+                  background:
+                    appMode === 'offline'
+                      ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.75) 0%, rgba(217, 119, 6, 0.55) 100%)'
+                      : 'transparent',
+                  color: appMode === 'offline' ? '#ffffff' : '#64748b',
+                  boxShadow: appMode === 'offline' ? '0 0 14px rgba(245, 158, 11, 0.6)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Zap size={13} color={appMode === 'offline' ? '#ffffff' : '#64748b'} />
+                <span>⚡ Offline Mode</span>
+              </button>
+            </div>
+
+            {/* Offline/Online Mode Sub-badge */}
+            <div
+              style={{
+                fontSize: '0.68rem',
+                color: appMode === 'offline' ? '#f59e0b' : '#38bdf8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontWeight: 600,
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: appMode === 'offline' ? '#f59e0b' : '#38bdf8',
+                  boxShadow: appMode === 'offline' ? '0 0 6px #f59e0b' : '0 0 6px #38bdf8',
+                }}
+              />
+              <span>
+                {appMode === 'offline'
+                  ? '⚡ 100% In-Browser · No Internet or Server Needed'
+                  : '🌐 Live Cloud Sync · FastAPI & Email OTP'}
+              </span>
+            </div>
+          </div>
+
+          {/* Network offline alert when in online mode */}
+          {!isNetworkOnline && appMode === 'online' && (
+            <div
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(245, 158, 11, 0.18)',
+                border: '1px solid rgba(245, 158, 11, 0.5)',
+                color: '#fde68a',
+                padding: '6px 10px',
+                borderRadius: '8px',
+                fontSize: '0.72rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '0.6rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <WifiOff size={13} />
+                <span>No Internet detected</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleMode('offline')}
+                style={{
+                  background: '#f59e0b',
+                  color: '#000000',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '2px 7px',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Switch to Offline
+              </button>
+            </div>
+          )}
+
           {/* Header Title */}
           <h1
             style={{
-              color: '#f59e0b',
-              fontSize: '1.9rem',
+              color: appMode === 'offline' ? '#f59e0b' : '#38bdf8',
+              fontSize: '1.85rem',
               fontWeight: 800,
               letterSpacing: '-0.02em',
-              marginBottom: '1rem',
-              textShadow: '0 0 20px rgba(245, 158, 11, 0.45)',
+              marginBottom: '0.85rem',
+              textShadow:
+                appMode === 'offline'
+                  ? '0 0 20px rgba(245, 158, 11, 0.45)'
+                  : '0 0 20px rgba(56, 189, 248, 0.45)',
               margin: '0 0 0.85rem 0',
             }}
           >
-            {step === 'otp' ? 'Verify Email' : isSignUp ? 'Sign Up' : 'Login'}
+            {appMode === 'offline'
+              ? '⚡ Offline Workspace'
+              : step === 'otp'
+              ? 'Verify Email'
+              : isSignUp
+              ? 'Sign Up'
+              : 'Login'}
           </h1>
 
           {/* Feedback messages */}
@@ -896,8 +1206,153 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* STEP 2: EMAIL OTP VERIFICATION FORM */}
-          {step === 'otp' ? (
+          {/* OFFLINE WORKSPACE MODE PANEL */}
+          {appMode === 'offline' ? (
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.85rem',
+              }}
+            >
+              {/* Glowing Offline Feature Checklist */}
+              <div
+                style={{
+                  background: 'linear-gradient(145deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.75) 100%)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  textAlign: 'left',
+                  boxShadow: '0 0 20px rgba(245, 158, 11, 0.15)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    color: '#f59e0b',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    marginBottom: '7px',
+                  }}
+                >
+                  <Zap size={15} />
+                  <span>Offline Ready Capabilities</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.72rem', color: '#cbd5e1' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle size={13} color="#10b981" />
+                    <span>Local Step-by-Step Math Solver (Symbolic Engine)</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle size={13} color="#10b981" />
+                    <span>SRS Flashcards & Spaced Repetition (Saved in Browser)</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle size={13} color="#10b981" />
+                    <span>Built-in AI Academic Tutor & Knowledge Base</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle size={13} color="#10b981" />
+                    <span>Audio Speech Synthesis & Question History</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Offline Profile Input & Launch Form */}
+              <form onSubmit={handleOfflineLaunch} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                  <label htmlFor="offline-name-input" style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>
+                    Learner Profile Name (Optional):
+                  </label>
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <input
+                      id="offline-name-input"
+                      type="text"
+                      value={offlineName}
+                      onChange={(e) => setOfflineName(e.target.value)}
+                      placeholder="e.g. Aman, Student, Scholar..."
+                      style={{
+                        width: '100%',
+                        padding: '10px 38px 10px 14px',
+                        backgroundColor: 'rgba(9, 14, 26, 0.85)',
+                        border: '1px solid rgba(245, 158, 11, 0.45)',
+                        borderRadius: '10px',
+                        color: '#ffffff',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.5)',
+                      }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = '#f59e0b')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.45)')}
+                    />
+                    <User size={16} color="#f59e0b" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  </div>
+                </div>
+
+                {/* Big Glowing Launch Button */}
+                <button
+                  id="login-launch-offline-btn"
+                  type="submit"
+                  disabled={isLoading}
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: '44px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    cursor: isLoading ? 'wait' : 'pointer',
+                    background: 'linear-gradient(90deg, #f59e0b 0%, #ea580c 100%)',
+                    boxShadow: '0 0 25px rgba(245, 158, 11, 0.65), 0 0 40px rgba(245, 158, 11, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                    e.currentTarget.style.boxShadow = '0 0 32px rgba(245, 158, 11, 0.85)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 0 25px rgba(245, 158, 11, 0.65)';
+                  }}
+                >
+                  <Zap size={16} />
+                  <span>{isLoading ? 'LAUNCHING...' : '⚡ LAUNCH OFFLINE WORKSPACE →'}</span>
+                </button>
+              </form>
+
+              {/* Switch back link */}
+              <button
+                type="button"
+                onClick={() => handleToggleMode('online')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#38bdf8',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '5px',
+                  marginTop: '0.2rem',
+                }}
+              >
+                <Globe size={13} />
+                <span>Switch to Online Mode (Cloud & Live OTP)</span>
+              </button>
+            </div>
+          ) : step === 'otp' ? (
             <form
               onSubmit={handleVerifyOtp}
               style={{
@@ -1294,7 +1749,7 @@ export const LoginPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Login Method Selector (Password vs Direct Gmail OTP) */}
+              {/* Login Method Selector (Password vs Direct Gmail OTP vs Offline Mode) */}
               {!isSignUp && (
                 <div
                   style={{
@@ -1321,12 +1776,12 @@ export const LoginPage: React.FC = () => {
                       background: loginMethod === 'password' ? 'rgba(56, 189, 248, 0.22)' : 'transparent',
                       color: loginMethod === 'password' ? '#38bdf8' : '#64748b',
                       fontWeight: loginMethod === 'password' ? 700 : 500,
-                      fontSize: '0.75rem',
+                      fontSize: '0.74rem',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    Password Login
+                    Password
                   </button>
                   <button
                     type="button"
@@ -1340,12 +1795,36 @@ export const LoginPage: React.FC = () => {
                       background: loginMethod === 'otp' ? 'rgba(245, 158, 11, 0.22)' : 'transparent',
                       color: loginMethod === 'otp' ? '#f59e0b' : '#64748b',
                       fontWeight: loginMethod === 'otp' ? 700 : 500,
-                      fontSize: '0.75rem',
+                      fontSize: '0.74rem',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    ⚡ Direct Gmail OTP
+                    ⚡ Gmail OTP
+                  </button>
+                  <button
+                    type="button"
+                    id="login-method-offline-button"
+                    onClick={() => handleToggleMode('offline')}
+                    style={{
+                      flex: 1,
+                      padding: '5px 0',
+                      borderRadius: '9999px',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      color: '#f59e0b',
+                      fontWeight: 700,
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '3px',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Zap size={12} />
+                    <span>⚡ Offline</span>
                   </button>
                 </div>
               )}
@@ -1670,8 +2149,8 @@ export const LoginPage: React.FC = () => {
             </form>
           )}
 
-          {/* Social Logins & Sign Up Toggle */}
-          {step === 'auth' && (
+          {/* Social Logins & Sign Up Toggle - Only in Online Mode */}
+          {appMode === 'online' && step === 'auth' && (
             <div
               style={{
                 marginTop: '1.15rem',
@@ -1707,6 +2186,42 @@ export const LoginPage: React.FC = () => {
                 onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
               >
                 {isSignUp ? 'Already have an account? Login' : 'New User? Sign Up with Email OTP'}
+              </button>
+
+              {/* Bottom Quick Offline Mode Button */}
+              <button
+                type="button"
+                id="login-bottom-offline-mode-btn"
+                onClick={() => handleToggleMode('offline')}
+                style={{
+                  marginTop: '0.65rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.1) 100%)',
+                  border: '1px solid rgba(245, 158, 11, 0.5)',
+                  color: '#f59e0b',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  padding: '7px 16px',
+                  borderRadius: '9999px',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 14px rgba(245, 158, 11, 0.25)',
+                  transition: 'all 0.18s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.25) 100%)';
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(245, 158, 11, 0.45)';
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.1) 100%)';
+                  e.currentTarget.style.boxShadow = '0 0 14px rgba(245, 158, 11, 0.25)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <Zap size={15} color="#f59e0b" />
+                <span>⚡ Run Project in Offline Mode</span>
               </button>
 
               {/* Security Shield notice */}

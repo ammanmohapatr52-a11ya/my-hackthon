@@ -21,10 +21,12 @@ export const UserAuthGuard: React.FC<UserAuthGuardProps> = ({ children }) => {
     };
 
     window.addEventListener('neurobridge_auth_changed', checkAuth);
+    window.addEventListener('neurobridge_mode_changed', checkAuth);
     window.addEventListener('storage', checkAuth);
 
     return () => {
       window.removeEventListener('neurobridge_auth_changed', checkAuth);
+      window.removeEventListener('neurobridge_mode_changed', checkAuth);
       window.removeEventListener('storage', checkAuth);
     };
   }, []);

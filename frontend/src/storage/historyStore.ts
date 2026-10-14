@@ -1,6 +1,7 @@
 import { db, type HistoryItem } from './db';
 import { getSetting } from './settingsStore';
 import { recordSolvedProblem } from './activityStore';
+import { queueOfflineAction } from '../services/offlineSyncService';
 
 export async function addHistoryItem(item: Omit<HistoryItem, 'id' | 'timestamp'>): Promise<number | null> {
   const saveHistory = await getSetting<boolean>('saveHistory', true);
@@ -17,6 +18,14 @@ export async function addHistoryItem(item: Omit<HistoryItem, 'id' | 'timestamp'>
   if (item.type === 'math') {
     await recordSolvedProblem();
   }
+
+  // Queue for sync on reconnect
+  queueOfflineAction(item.type === 'math' ? 'math_solved' : 'note', {
+    title: item.title,
+    input: item.input,
+    type: item.type,
+    timestamp,
+  });
 
   return id;
 }

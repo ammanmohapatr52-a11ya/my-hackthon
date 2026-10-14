@@ -10,12 +10,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Noto+Sans+Odia:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/assets/index-DdpNGISk.js"></script>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#6366f1" />
+    <script type="module" crossorigin src="/assets/index-DaC6GHQS.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-CbXtAM7H.js">
-    <link rel="modulepreload" crossorigin href="/assets/page-admin-CDHOX7LZ.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-react-DzTpozvX.js">
+    <link rel="modulepreload" crossorigin href="/assets/page-admin-BYHemuip.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-BG5Ymt90.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-storage-IbC1YGSs.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-icons-DPm3FO9W.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-icons-Cx4ehPEM.js">
     <link rel="modulepreload" crossorigin href="/assets/data-gk-facts-BGQWIAVM.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-katex-DneLXh5C.js">
     <link rel="modulepreload" crossorigin href="/assets/data-india-map-wMWrscxg.js">
@@ -23,5 +25,16 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            console.log('⚡ [Neurobridge] Service Worker registered for offline resilience:', reg.scope);
+          }).catch((err) => {
+            console.warn('⚠️ [Neurobridge] Service Worker registration failed:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

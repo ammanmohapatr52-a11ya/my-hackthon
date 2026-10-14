@@ -1,4 +1,14 @@
 import { setAdminSession, getAdminCredentials, clearAdminSession } from '../security/adminFirewall';
+import {
+  isOfflineMode,
+  getAppMode,
+  setAppMode,
+  loginOffline,
+  STORAGE_KEY_APP_MODE,
+  type AppMode,
+} from './offlineService';
+
+export { isOfflineMode, getAppMode, setAppMode, loginOffline, STORAGE_KEY_APP_MODE, type AppMode };
 
 export type UserRole = 'admin' | 'teacher' | 'student' | 'guest';
 export type UserStatus = 'active' | 'suspended' | 'pending';
@@ -45,6 +55,7 @@ export interface AuthSessionUser {
   avatar: string;
   loggedInAt: string;
   provider?: string;
+  isOffline?: boolean;
 }
 
 export const INITIAL_USERS: UserRecord[] = [
@@ -331,6 +342,11 @@ export const getValidatedSessionUser = (): AuthSessionUser | null => {
   const current = getCurrentAuthUser();
   if (!current) return null;
 
+  // Offline Session Bypass: Allow offline student session without remote directory lookup
+  if (current.isOffline || isOfflineMode() || current.provider?.toLowerCase().includes('offline')) {
+    return current;
+  }
+
   // Master Admin bypasses regular student directory lookup
   if (
     current.username.toLowerCase() === 'aog' ||
@@ -382,6 +398,29 @@ export const authenticateOrRegisterUser = (params: AuthenticateUserParams): {
 } => {
   const { usernameOrEmail, isSignUp, provider, isOtpVerified } = params;
   const input = usernameOrEmail.trim();
+
+  // 0. Offline Mode Instant Authentication
+  if (isOfflineMode()) {
+    const offlineSession = loginOffline(input || 'Offline Scholar');
+    return {
+      success: true,
+      user: {
+        id: offlineSession.id || 'usr-offline',
+        name: offlineSession.name || 'Offline Scholar',
+        username: offlineSession.username,
+        email: offlineSession.email || `${offlineSession.username}@local.neurobridge`,
+        role: 'student',
+        status: 'active',
+        avatar: '⚡',
+        joinedDate: new Date().toISOString().slice(0, 10),
+        lastActive: 'Just now',
+        storageUsed: '0.0 MB',
+        questionsCount: 0,
+        permissions: { canScanPdf: true, canUseVoice: true, canExportData: true, isApiRateLimited: false },
+        emailVerified: true,
+      },
+    };
+  }
 
   if (!input) {
     return { success: false, error: 'Please enter your Gmail / username' };
