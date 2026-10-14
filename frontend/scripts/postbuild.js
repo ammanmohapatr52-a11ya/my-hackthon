@@ -31,6 +31,8 @@ if (fs.existsSync(indexHtmlPath)) {
     'current-affairs',
     'history',
     'profile',
+    'planner',
+    'study-planner',
     'settings',
     'login',
     'admin-login',

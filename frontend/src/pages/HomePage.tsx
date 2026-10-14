@@ -5,6 +5,7 @@ import { StatsRow } from '../features/home/StatsRow';
 import { WeekStrip } from '../features/home/WeekStrip';
 import { QuickActions } from '../features/home/QuickActions';
 import { PrivacyNote } from '../features/home/PrivacyNote';
+import { StudyPlannerWidget } from '../features/planner/StudyPlannerWidget';
 import { Sparkles, X, CheckCircle2, Mic, Zap, Volume2 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
@@ -171,6 +172,7 @@ export const HomePage: React.FC = () => {
 
       <ProfilePicker />
       <StatsRow />
+      <StudyPlannerWidget />
       <QuickActions />
       <WeekStrip />
       <PrivacyNote />

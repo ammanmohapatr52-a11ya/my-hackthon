@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calculator, HelpCircle, Activity, Layers, Volume2, ArrowRight, FileText, Globe2, Compass } from 'lucide-react';
+import { Calculator, HelpCircle, Activity, Layers, Volume2, ArrowRight, FileText, Globe2, Compass, CalendarCheck } from 'lucide-react';
 
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -56,6 +56,14 @@ export const QuickActions: React.FC = () => {
       icon: Compass,
       color: '#F59E0B',
       tag: 'CULTURE & GEOGRAPHY',
+    },
+    {
+      title: 'Smart Study Planner',
+      desc: 'Plan assignments, schedule project milestones, track days remaining, and stay ahead with deadline alerts.',
+      path: '/planner',
+      icon: CalendarCheck,
+      color: '#0284C7',
+      tag: 'NEW · DEADLINE TRACKER',
     },
     {
       title: t('cards.title', 'Flashcards'),

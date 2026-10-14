@@ -19,6 +19,7 @@ import {
   X,
   User,
   Download,
+  CalendarCheck,
 } from 'lucide-react';
 
 import { useLanguage } from '../i18n/LanguageContext';
@@ -50,6 +51,7 @@ export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
     { to: '/scan', label: t('nav.scan', 'PDF Scanner'), icon: FileText },
     { to: '/graph', label: t('nav.graph', 'Graph & Sound'), icon: Activity },
     { to: '/india-map', label: t('nav.indiaMap', 'Map of India (भारत)'), icon: Compass, badge: 'NEW' },
+    { to: '/planner', label: t('nav.planner', 'Study Planner'), icon: CalendarCheck, badge: 'NEW' },
     { to: '/flashcards', label: t('nav.flashcards', 'Flashcards'), icon: Layers },
     { to: '/voice-learning', label: t('nav.voice', 'Voice Learning'), icon: Volume2 },
     { to: '/history', label: t('nav.history', 'My History'), icon: Clock },

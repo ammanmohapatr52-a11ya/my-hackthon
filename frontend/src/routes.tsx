@@ -16,6 +16,7 @@ import { AdminPage } from './pages/AdminPage';
 import { NewsPage } from './pages/NewsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { IndiaMapPage } from './pages/IndiaMapPage';
+import { StudyPlannerPage } from './pages/StudyPlannerPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminFirewallGuard } from './security/AdminFirewallGuard';
 import { UserAuthGuard } from './security/UserAuthGuard';
@@ -70,6 +71,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="current-affairs" element={<NewsPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="planner" element={<StudyPlannerPage />} />
+        <Route path="study-planner" element={<StudyPlannerPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
