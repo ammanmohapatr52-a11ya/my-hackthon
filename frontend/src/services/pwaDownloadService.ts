@@ -444,13 +444,38 @@ export const downloadOfflinePortableApp = (): void => {
 </body>
 </html>`;
 
-  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'Neurobridge_Offline_Portable_App.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  try {
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Neurobridge_Offline_Portable_App.html';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch {}
+    }, 2500);
+  } catch (err) {
+    // Mobile fallback with encoded data URI
+    try {
+      const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
+      const a = document.createElement('a');
+      a.href = dataUri;
+      a.download = 'Neurobridge_Offline_Portable_App.html';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          document.body.removeChild(a);
+        } catch {}
+      }, 1000);
+    } catch {
+      window.open('about:blank', '_blank')?.document.write(htmlContent);
+    }
+  }
 };

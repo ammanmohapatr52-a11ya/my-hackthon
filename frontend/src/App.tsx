@@ -6,6 +6,7 @@ import { AnnouncerProvider } from './accessibility/Announcer';
 import { VisualAlertProvider } from './accessibility/VisualAlert';
 import { AppRoutes } from './routes';
 import { DoubleTapVoiceListener } from './features/voice-command/DoubleTapVoiceListener';
+import { MobileInstallBanner } from './components/ui/MobileInstallBanner';
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
             <VisualAlertProvider>
               <DoubleTapVoiceListener />
               <AppRoutes />
+              <MobileInstallBanner />
             </VisualAlertProvider>
           </AnnouncerProvider>
         </AccessibilityProvider>

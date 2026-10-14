@@ -35,6 +35,7 @@ export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onCl
   const [cacheStatusText, setCacheStatusText] = useState<string>('');
   const [cacheSuccess, setCacheSuccess] = useState<boolean>(false);
   const [installSuccess, setInstallSuccess] = useState<boolean>(false);
+  const [showMobileHint, setShowMobileHint] = useState<boolean>(false);
 
   const platform = detectDevicePlatform();
 
@@ -477,32 +478,100 @@ export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onCl
                   <Smartphone size={32} color="#f59e0b" />
                 </div>
 
-                {canInstall && (
-                  <button
-                    type="button"
-                    id="btn-install-mobile-pwa"
-                    onClick={handleNativeInstall}
+                {/* Always-Visible Primary Mobile Install Button */}
+                <button
+                  type="button"
+                  id="btn-install-mobile-pwa"
+                  onClick={async () => {
+                    if (canInstall) {
+                      await handleNativeInstall();
+                    } else {
+                      setShowMobileHint(true);
+                      handlePreCacheAll();
+                    }
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.94rem',
+                    padding: '0.85rem 1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 22px rgba(245, 158, 11, 0.55)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Download size={18} />
+                  <span>📱 Tap to Install App on Phone Home Screen</span>
+                </button>
+
+                {/* Interactive Phone Guidance Callout */}
+                {showMobileHint && !canInstall && (
+                  <div
                     style={{
-                      background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
-                      border: 'none',
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      border: '1.5px solid #f59e0b',
                       borderRadius: '12px',
-                      color: '#ffffff',
-                      fontWeight: 800,
-                      fontSize: '0.92rem',
-                      padding: '0.75rem 1.25rem',
+                      padding: '12px 14px',
+                      color: '#fef3c7',
+                      fontSize: '0.82rem',
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      boxShadow: '0 0 20px rgba(245, 158, 11, 0.5)',
-                      transition: 'all 0.2s ease',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      boxShadow: '0 0 20px rgba(245, 158, 11, 0.3)',
                     }}
                   >
-                    <Download size={18} />
-                    <span>Install on Mobile Home Screen</span>
-                  </button>
+                    <div style={{ fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Zap size={14} />
+                      <span>Assets Cached! To add App icon to your Phone:</span>
+                    </div>
+                    {platform === 'ios' ? (
+                      <div style={{ lineHeight: '1.6' }}>
+                        1. Tap Safari's <strong>Share button (⎋)</strong> at the bottom of the screen.<br />
+                        2. Tap <strong>"Add to Home Screen"</strong>.<br />
+                        3. Tap <strong>Add</strong> at top right!
+                      </div>
+                    ) : (
+                      <div style={{ lineHeight: '1.6' }}>
+                        1. Tap Chrome's <strong>3 dots menu (⋮)</strong> at top-right.<br />
+                        2. Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.<br />
+                        3. The Neurobridge app will be added directly to your phone screen!
+                      </div>
+                    )}
+                  </div>
                 )}
+
+                {/* 1-Tap Offline Pre-Cache Button for Phone */}
+                <button
+                  type="button"
+                  id="btn-mobile-precache-now"
+                  onClick={handlePreCacheAll}
+                  disabled={isCaching}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(16, 185, 129, 0.45)',
+                    borderRadius: '10px',
+                    color: '#34d399',
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    padding: '0.7rem 1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    cursor: isCaching ? 'wait' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Zap size={15} color="#10b981" />
+                  <span>{isCaching ? 'Downloading Offline Cache...' : '⚡ Pre-Cache Full App on Phone (1-Tap Offline)'}</span>
+                </button>
 
                 {/* Android Steps */}
                 <div
