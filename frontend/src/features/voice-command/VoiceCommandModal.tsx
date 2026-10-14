@@ -7,6 +7,7 @@ import { Mic, MicOff, Check, ArrowRight } from 'lucide-react';
 import { useAnnounce } from '../../accessibility/useAnnounce';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { assistantVoice } from '../../services/assistantVoice';
+import { pageReaderService } from '../../services/pageReaderService';
 
 interface VoiceCommandModalProps {
   isOpen: boolean;
@@ -84,6 +85,14 @@ export const VoiceCommandModal: React.FC<VoiceCommandModalProps> = ({
       }
       case 'navigate': {
         navigate(detectedIntent.path);
+        break;
+      }
+      case 'read': {
+        pageReaderService.start(language as any);
+        break;
+      }
+      case 'stop': {
+        pageReaderService.stop();
         break;
       }
       default:
