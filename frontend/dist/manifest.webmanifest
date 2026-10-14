@@ -1,17 +1,50 @@
 {
+  "id": "/",
   "name": "Neurobridge — Accessible Academic Problem Solver",
   "short_name": "Neurobridge",
   "description": "Accessible Academic Problem Solver with verified math steps, synchronized audio, spaced repetition, and 100% offline edge operation.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0d14",
-  "theme_color": "#6366f1",
+  "orientation": "any",
+  "background_color": "#070c18",
+  "theme_color": "#38bdf8",
+  "categories": ["education", "productivity", "utilities"],
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/images/login_logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Solve Math",
+      "short_name": "Solve",
+      "description": "On-Device Verified Math Solver",
+      "url": "/solve",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Offline Flashcards",
+      "short_name": "Flashcards",
+      "description": "Spaced Repetition Cards",
+      "url": "/flashcards",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Offline Workspace",
+      "short_name": "Workspace",
+      "description": "Launch Offline Workspace",
+      "url": "/login",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
     }
   ]
 }

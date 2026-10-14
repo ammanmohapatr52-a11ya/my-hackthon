@@ -18,10 +18,12 @@ import {
   Compass,
   X,
   User,
+  Download,
 } from 'lucide-react';
 
 import { useLanguage } from '../i18n/LanguageContext';
 import { getCurrentAuthUser, logoutAuthUser, type AuthSessionUser } from '../services/userService';
+import { AppDownloadModal } from '../components/ui/AppDownloadModal';
 
 interface SideNavProps {
   onItemClick?: () => void;
@@ -32,6 +34,7 @@ export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [currentUser, setCurrentUser] = useState<AuthSessionUser | null>(() => getCurrentAuthUser());
+  const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const syncUser = () => setCurrentUser(getCurrentAuthUser());
@@ -180,6 +183,42 @@ export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
           );
         })}
 
+        {/* Download & Install App Button */}
+        <button
+          type="button"
+          id="sidenav-download-app-btn"
+          onClick={() => {
+            setIsDownloadOpen(true);
+            if (onClose) onClose();
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-md)',
+            color: '#38bdf8',
+            background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.18) 0%, rgba(245, 158, 11, 0.12) 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            margin: '0.5rem 0',
+            width: '100%',
+            textAlign: 'left',
+            boxShadow: '0 0 12px rgba(56, 189, 248, 0.15)',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Download size={20} color="#38bdf8" />
+            <span>Download / Install App</span>
+          </div>
+          <span style={{ fontSize: '0.68rem', padding: '2px 7px', background: 'rgba(56, 189, 248, 0.25)', borderRadius: '4px', color: '#38bdf8', fontWeight: 800 }}>
+            OFFLINE
+          </span>
+        </button>
+
         {/* Deferred feature: Braille Tools (disabled with Coming later per FR-SHELL3) */}
         <div
           title="Braille display hardware output planned for later phase"
@@ -252,6 +291,11 @@ export const SideNav: React.FC<SideNavProps> = ({ onItemClick, onClose }) => {
         <div>Team Neurobridge · NEXTECH 2.0</div>
         <div style={{ marginTop: '2px', color: 'var(--accent-primary)' }}>{t('nav.tagline', 'Make It Accessible.')}</div>
       </div>
+
+      <AppDownloadModal
+        isOpen={isDownloadOpen}
+        onClose={() => setIsDownloadOpen(false)}
+      />
     </nav>
   );
 };

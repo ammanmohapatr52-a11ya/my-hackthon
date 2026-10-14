@@ -3,13 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PrivacyBadge } from './PrivacyBadge';
 import { LanguageSelect } from './LanguageSelect';
 import { VoiceCommandModal } from '../features/voice-command/VoiceCommandModal';
-import { Mic, Menu, LogIn, LogOut, User as UserIcon, Globe, Zap, RefreshCw, CheckCircle } from 'lucide-react';
+import { Mic, Menu, LogIn, LogOut, User as UserIcon, Globe, Zap, RefreshCw, CheckCircle, Download } from 'lucide-react';
 import { useAccessibility } from '../accessibility/AccessibilityContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
 import { logoutAuthUser } from '../services/userService';
 import { getAppMode, setAppMode, type AppMode } from '../services/offlineService';
 import { getPendingSyncCount, syncOfflineQueue } from '../services/offlineSyncService';
+import { AppDownloadModal } from '../components/ui/AppDownloadModal';
 
 interface HeaderProps {
   onToggleMobileNav?: () => void;
@@ -19,6 +20,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = false }) => {
   const navigate = useNavigate();
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
   const [appMode, setAppModeState] = useState<AppMode>(() => getAppMode());
   const [pendingSync, setPendingSync] = useState<number>(() => getPendingSyncCount());
@@ -265,6 +267,32 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = f
             </div>
           )}
 
+          {/* Download & Install App for Mobile & Laptop */}
+          <button
+            type="button"
+            id="header-download-app-btn"
+            onClick={() => setIsDownloadModalOpen(true)}
+            title="Download / Install Neurobridge App on Laptop (Windows/Mac) & Mobile (Android/iOS) — Offline Ready"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: '9999px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(245, 158, 11, 0.22) 100%)',
+              color: '#ffffff',
+              border: '1px solid rgba(56, 189, 248, 0.55)',
+              boxShadow: '0 0 14px rgba(56, 189, 248, 0.25)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Download size={13} color="#38bdf8" />
+            <span className="hide-on-mobile">Download App</span>
+          </button>
+
           <LanguageSelect />
 
           <button
@@ -370,6 +398,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isNavOpen = f
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}
       />
+
+      <AppDownloadModal
+        isOpen={isDownloadModalOpen}
+        onClose={() => setIsDownloadModalOpen(false)}
+      />
     </>
   );
 };
+

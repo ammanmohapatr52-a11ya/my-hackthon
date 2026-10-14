@@ -127,3 +127,42 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Client Message Listener for full offline package pre-caching
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'PRECACHE_ALL') {
+    const urls = event.data.urls || [
+      '/',
+      '/index.html',
+      '/login',
+      '/solve',
+      '/flashcards',
+      '/history',
+      '/profile',
+      '/ask',
+      '/settings',
+      '/news',
+      '/graph',
+      '/india-map',
+      '/favicon.svg',
+      '/manifest.webmanifest'
+    ];
+    event.waitUntil(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        await Promise.all(
+          urls.map(async (url) => {
+            try {
+              const res = await fetch(url, { cache: 'no-cache' });
+              if (res.ok) await cache.put(url, res);
+            } catch (e) {
+              // ignore single fetch error
+            }
+          })
+        );
+        const clients = await self.clients.matchAll();
+        clients.forEach((client) => client.postMessage({ type: 'PRECACHE_COMPLETE' }));
+      })
+    );
+  }
+});
+

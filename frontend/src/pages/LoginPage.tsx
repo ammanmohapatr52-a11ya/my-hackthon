@@ -23,6 +23,7 @@ import {
   Zap,
   Wifi,
   WifiOff,
+  Download,
 } from 'lucide-react';
 import {
   authenticateOrRegisterUser,
@@ -51,6 +52,7 @@ import {
 } from '../security/otpService';
 import { MarvelBackground3D } from '../components/ui/MarvelBackground3D';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
+import { AppDownloadModal } from '../components/ui/AppDownloadModal';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -64,6 +66,7 @@ export const LoginPage: React.FC = () => {
   const [appMode, setAppModeState] = useState<AppMode>(() => getAppMode());
   const [isNetworkOnline, setIsNetworkOnline] = useState<boolean>(() => isBrowserNetworkOnline());
   const [offlineName, setOfflineName] = useState<string>('Offline Scholar');
+  const [downloadModalOpen, setDownloadModalOpen] = useState<boolean>(false);
 
   // 3D Mouse Parallax Tilt state
   const [mouseTilt, setMouseTilt] = useState({ x: 0, y: 0 });
@@ -668,6 +671,32 @@ export const LoginPage: React.FC = () => {
             <span>⚡ Offline</span>
           </button>
         </div>
+
+        {/* Download App for Mobile & Laptop Button */}
+        <button
+          type="button"
+          id="login-top-download-app-btn"
+          onClick={() => setDownloadModalOpen(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(245, 158, 11, 0.22) 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.55)',
+            color: '#38bdf8',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            padding: '0.35rem 0.8rem',
+            borderRadius: '9999px',
+            cursor: 'pointer',
+            boxShadow: '0 0 12px rgba(56, 189, 248, 0.25)',
+            transition: 'all 0.2s ease',
+          }}
+          title="Download & Install App on Mobile & Laptop — Offline Ready"
+        >
+          <Download size={14} color="#38bdf8" />
+          <span>Download App</span>
+        </button>
 
         {/* Quick Demo Button (Opens Gmail + 1-Min OTP modal) */}
         <button
@@ -1330,6 +1359,33 @@ export const LoginPage: React.FC = () => {
                   <span>{isLoading ? 'LAUNCHING...' : '⚡ LAUNCH OFFLINE WORKSPACE →'}</span>
                 </button>
               </form>
+
+              {/* Download App for Mobile & Laptop Button */}
+              <button
+                type="button"
+                id="login-offline-download-btn"
+                onClick={() => setDownloadModalOpen(true)}
+                style={{
+                  width: '100%',
+                  padding: '9px 14px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(56, 189, 248, 0.45)',
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  color: '#38bdf8',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '7px',
+                  boxShadow: '0 0 14px rgba(56, 189, 248, 0.2)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Download size={15} color="#38bdf8" />
+                <span>📥 Download / Install App (Mobile & Laptop)</span>
+              </button>
 
               {/* Switch back link */}
               <button
@@ -2660,8 +2716,11 @@ export const LoginPage: React.FC = () => {
         </div>
       )}
 
-
-
+      {/* App Download & Install Modal */}
+      <AppDownloadModal
+        isOpen={downloadModalOpen}
+        onClose={() => setDownloadModalOpen(false)}
+      />
     </div>
   );
 };
