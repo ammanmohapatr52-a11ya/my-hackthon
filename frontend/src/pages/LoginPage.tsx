@@ -175,11 +175,7 @@ export const LoginPage: React.FC = () => {
     setAppModeState(targetMode);
     setAppMode(targetMode);
     setError(null);
-    setSuccessMsg(
-      targetMode === 'offline'
-        ? '⚡ Offline Mode activated: 100% In-Browser features ready without internet or server.'
-        : '🌐 Online Mode activated: Connected to Cloud API & live authentication.'
-    );
+    setSuccessMsg(null);
   };
 
   const handleOfflineLaunch = (e?: React.FormEvent) => {
@@ -618,65 +614,7 @@ export const LoginPage: React.FC = () => {
           zIndex: 40,
         }}
       >
-        {/* Top-Right Online/Offline Mode Toggle Switch */}
-        <div
-          role="radiogroup"
-          aria-label="Operating Mode Switch"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'rgba(8, 14, 28, 0.92)',
-            borderRadius: '9999px',
-            padding: '3px',
-            border: appMode === 'offline' ? '1.5px solid rgba(245, 158, 11, 0.65)' : '1.5px solid rgba(56, 189, 248, 0.6)',
-            boxShadow: appMode === 'offline' ? '0 0 14px rgba(245, 158, 11, 0.35)' : '0 0 12px rgba(56, 189, 248, 0.25)',
-          }}
-        >
-          <button
-            type="button"
-            id="top-mode-online-btn"
-            onClick={() => handleToggleMode('online')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '4px 11px',
-              borderRadius: '9999px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 700,
-              fontSize: '0.74rem',
-              background: appMode === 'online' ? 'rgba(56, 189, 248, 0.3)' : 'transparent',
-              color: appMode === 'online' ? '#38bdf8' : '#64748b',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Globe size={13} />
-            <span>Online</span>
-          </button>
-          <button
-            type="button"
-            id="top-mode-offline-btn"
-            onClick={() => handleToggleMode('offline')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '4px 11px',
-              borderRadius: '9999px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 700,
-              fontSize: '0.74rem',
-              background: appMode === 'offline' ? 'rgba(245, 158, 11, 0.35)' : 'transparent',
-              color: appMode === 'offline' ? '#f59e0b' : '#64748b',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Zap size={13} />
-            <span>⚡ Offline</span>
-          </button>
-        </div>
+
 
         {/* Download App for Mobile & Laptop Button */}
         <button
@@ -1864,30 +1802,6 @@ export const LoginPage: React.FC = () => {
                   >
                     ⚡ Gmail OTP
                   </button>
-                  <button
-                    type="button"
-                    id="login-method-offline-button"
-                    onClick={() => handleToggleMode('offline')}
-                    style={{
-                      flex: 1,
-                      padding: '5px 0',
-                      borderRadius: '9999px',
-                      border: '1px solid rgba(245, 158, 11, 0.35)',
-                      background: 'rgba(245, 158, 11, 0.12)',
-                      color: '#f59e0b',
-                      fontWeight: 700,
-                      fontSize: '0.74rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '3px',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <Zap size={12} />
-                    <span>⚡ Offline</span>
-                  </button>
                 </div>
               )}
 
@@ -2250,41 +2164,7 @@ export const LoginPage: React.FC = () => {
                 {isSignUp ? 'Already have an account? Login' : 'New User? Sign Up with Email OTP'}
               </button>
 
-              {/* Bottom Quick Offline Mode Button */}
-              <button
-                type="button"
-                id="login-bottom-offline-mode-btn"
-                onClick={() => handleToggleMode('offline')}
-                style={{
-                  marginTop: '0.65rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.1) 100%)',
-                  border: '1px solid rgba(245, 158, 11, 0.5)',
-                  color: '#f59e0b',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  padding: '7px 16px',
-                  borderRadius: '9999px',
-                  cursor: 'pointer',
-                  boxShadow: '0 0 14px rgba(245, 158, 11, 0.25)',
-                  transition: 'all 0.18s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.25) 100%)';
-                  e.currentTarget.style.boxShadow = '0 0 20px rgba(245, 158, 11, 0.45)';
-                  e.currentTarget.style.transform = 'scale(1.02)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.1) 100%)';
-                  e.currentTarget.style.boxShadow = '0 0 14px rgba(245, 158, 11, 0.25)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-              >
-                <Zap size={15} color="#f59e0b" />
-                <span>⚡ Run Project in Offline Mode</span>
-              </button>
+
 
               {/* Direct Mobile App Download Button (.apk) */}
               <button
