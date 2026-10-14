@@ -1,9 +1,9 @@
 {
-  "id": "/",
+  "id": "/login",
   "name": "Neurobridge — Academic Problem Solver",
   "short_name": "Neurobridge",
   "description": "Accessible Academic Problem Solver with verified math steps, synchronized audio, spaced repetition, and 100% offline edge operation.",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

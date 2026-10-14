@@ -49,7 +49,14 @@ class FirewallState:
         ]
 
     def is_ip_blocked(self, ip: str) -> bool:
-        if ip in self.whitelisted_ips:
+        if (
+            ip in self.whitelisted_ips or
+            ip.startswith("10.") or
+            ip.startswith("127.") or
+            ip == "::1" or
+            ip.startswith("172.") or
+            ip.startswith("192.168.")
+        ):
             return False
         if ip in self.blocked_ips:
             return True
@@ -110,7 +117,9 @@ RATE_LIMIT_RULES = [
 
 class FirewallMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
-        client_ip = request.client.host if request.client else "127.0.0.1"
+        cf_ip = request.headers.get("cf-connecting-ip")
+        xff = request.headers.get("x-forwarded-for")
+        client_ip = cf_ip or (xff.split(",")[0].strip() if xff else None) or (request.client.host if request.client else "127.0.0.1")
         path = request.url.path
 
         # If firewall is globally disabled

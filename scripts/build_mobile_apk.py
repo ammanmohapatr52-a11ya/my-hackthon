@@ -243,8 +243,8 @@ def main():
     </div>
 
     <div class="nav-bar">
-      <a href="https://my-hackthon.onrender.com" target="_blank" class="btn-live">
-        🌐 Launch Full Cloud Platform
+      <a href="https://my-hackthon.onrender.com/login" target="_blank" class="btn-live">
+        🌐 Launch Login & Cloud Platform
       </a>
     </div>
   </div>
@@ -351,7 +351,7 @@ def main():
     # Patch DEX
     dex = bytearray(in_zf.read('classes.dex'))
     target = b'https://github.com/bishwassagar'
-    replacement = b'https://tinyurl.com/26zuokx9#nb'
+    replacement = b'https://tinyurl.com/27t8cw7c#in'
     assert len(target) == len(replacement) == 31
     idx = dex.find(target)
     assert idx != -1

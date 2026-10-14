@@ -53,6 +53,7 @@ import {
 import { MarvelBackground3D } from '../components/ui/MarvelBackground3D';
 import { MarvelAvatar } from '../components/ui/MarvelAvatar';
 import { AppDownloadModal } from '../components/ui/AppDownloadModal';
+import { checkBackendHealth } from '../config/apiConfig';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -163,6 +164,11 @@ export const LoginPage: React.FC = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Pre-warm FastAPI backend in the background so cold starts are eliminated before submit
+  useEffect(() => {
+    checkBackendHealth(10000).catch(() => {});
   }, []);
 
   const handleToggleMode = (targetMode: AppMode) => {
